@@ -11,7 +11,7 @@ struct BoardingPassView: View {
                 HStack {
                     Text("BOARDING PASS").font(.system(size: 11, weight: .bold)).tracking(2).foregroundStyle(Theme.faint)
                     Spacer()
-                    Text("CONTRAIL").font(.system(size: 11, weight: .heavy)).tracking(3).foregroundStyle(Theme.accent.opacity(0.8))
+                    Text("FOCUS ON FLIGHT").font(.system(size: 11, weight: .heavy)).tracking(3).foregroundStyle(Theme.accent.opacity(0.8))
                 }
                 HStack(alignment: .center) {
                     endpoint(plan.origin, align: .leading)

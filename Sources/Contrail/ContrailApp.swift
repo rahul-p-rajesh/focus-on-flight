@@ -8,7 +8,7 @@ struct ContrailApp: App {
     @State private var model = AppModel()
 
     var body: some Scene {
-        Window("Contrail", id: "main") {
+        Window("Focus on Flight", id: "main") {
             RootView(model: model)
                 .onAppear { delegate.model = model }
         }
@@ -60,8 +60,8 @@ struct MenuBarContent: View {
             Text("No flight in progress")
         }
         Divider()
-        Button("Show Contrail") { model.showMainWindow() }
-        Button("Quit Contrail") { NSApp.terminate(nil) }.keyboardShortcut("q")
+        Button("Show Focus on Flight") { model.showMainWindow() }
+        Button("Quit Focus on Flight") { NSApp.terminate(nil) }.keyboardShortcut("q")
     }
 }
 

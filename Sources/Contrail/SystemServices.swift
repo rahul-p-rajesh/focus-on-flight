@@ -37,7 +37,7 @@ import UserNotifications
     func set(_ on: Bool) {
         if on, token == nil {
             token = ProcessInfo.processInfo.beginActivity(options: [.idleDisplaySleepDisabled, .userInitiated],
-                                                          reason: "Contrail flight in progress")
+                                                          reason: "Focus on Flight: flight in progress")
         } else if !on, let t = token {
             ProcessInfo.processInfo.endActivity(t)
             token = nil
@@ -91,7 +91,7 @@ import UserNotifications
             w.hasShadow = false
             w.isOpaque = true
             w.backgroundColor = .black
-            w.title = "Contrail Desktop Scene"
+            w.title = "Focus on Flight Desktop Scene"
             w.contentView = NSHostingView(rootView: makeContent())
             w.orderFront(nil)
             windows.append(w)

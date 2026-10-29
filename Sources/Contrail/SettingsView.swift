@@ -95,7 +95,7 @@ struct SettingsView: View {
                     }
                 }
                 group("About") {
-                    Text("Satellite imagery and place search by Apple Maps. Airport names and codes from OurAirports (public domain). Sounds are synthesised by Contrail.")
+                    Text("Satellite imagery and place search by Apple Maps. Airport names and codes from OurAirports (public domain). Sounds are synthesised by Focus on Flight.")
                         .font(.system(size: 12)).foregroundStyle(Theme.dim).fixedSize(horizontal: false, vertical: true)
                     Text("Data folder: \(model.store.dir.path)").font(.system(size: 11, design: .monospaced)).foregroundStyle(Theme.faint)
                         .textSelection(.enabled)

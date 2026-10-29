@@ -1,4 +1,4 @@
-# Contrail
+# Focus on Flight
 
 A personal macOS focus app. Each session is a flight between two places on Earth at
 real speed: you look down on satellite scenery with town names and airports moving
@@ -9,7 +9,7 @@ in view. Pick how long you want to fly and choose from real airports that far aw
 
 ```bash
 ./scripts/build-app.sh
-open build/Contrail.app
+open "build/Focus on Flight.app"
 ```
 
 Requires macOS 26 on Apple silicon. Builds with Xcode or with only the Command Line
@@ -46,7 +46,7 @@ and CSV export.
 - **Motion**: with Smooth motion, MapKit glides the camera between updates; Energy
   saver steps it 5 to 10 times a second. Either way the scene drops to once a
   second when no window shows it.
-- **Data**: JSON files in `~/Library/Application Support/Contrail`.
+- **Data**: JSON files in `~/Library/Application Support/Contrail` (the project's original name; kept so existing logbooks carry over).
 
 ## Data sources
 

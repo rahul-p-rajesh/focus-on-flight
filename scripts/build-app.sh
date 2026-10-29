@@ -1,15 +1,15 @@
 #!/bin/zsh
-# Builds build/Contrail.app (release), with icon, resources and an ad-hoc signature.
+# Builds "build/Focus on Flight.app" (release), with icon, resources and an ad-hoc signature.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 # Fall back to the Command Line Tools if the Xcode license has not been accepted yet.
 if ! swift --version >/dev/null 2>&1; then export DEVELOPER_DIR=/Library/Developer/CommandLineTools; fi
 swift build -c release --product Contrail
 BIN="$(swift build -c release --show-bin-path)/Contrail"
-APP=build/Contrail.app
+APP="build/Focus on Flight.app"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-cp "$BIN" "$APP/Contents/MacOS/Contrail"
+cp "$BIN" "$APP/Contents/MacOS/FocusOnFlight"
 cp Resources/airports.json "$APP/Contents/Resources/"
 cp -R Resources/Sounds "$APP/Contents/Resources/Sounds"
 
@@ -29,10 +29,10 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-  <key>CFBundleExecutable</key><string>Contrail</string>
+  <key>CFBundleExecutable</key><string>FocusOnFlight</string>
   <key>CFBundleIdentifier</key><string>com.rahulprajesh.contrail</string>
-  <key>CFBundleName</key><string>Contrail</string>
-  <key>CFBundleDisplayName</key><string>Contrail</string>
+  <key>CFBundleName</key><string>Focus on Flight</string>
+  <key>CFBundleDisplayName</key><string>Focus on Flight</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleShortVersionString</key><string>1.0</string>
   <key>CFBundleVersion</key><string>1</string>
@@ -41,8 +41,8 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>LSApplicationCategoryType</key><string>public.app-category.productivity</string>
   <key>NSHighResolutionCapable</key><true/>
   <key>NSPrincipalClass</key><string>NSApplication</string>
-  <key>NSLocationUsageDescription</key><string>Contrail uses your location only when you choose Near me, to find a departure point close to you.</string>
-  <key>NSLocationWhenInUseUsageDescription</key><string>Contrail uses your location only when you choose Near me, to find a departure point close to you.</string>
+  <key>NSLocationUsageDescription</key><string>Focus on Flight uses your location only when you choose Near me, to find a departure point close to you.</string>
+  <key>NSLocationWhenInUseUsageDescription</key><string>Focus on Flight uses your location only when you choose Near me, to find a departure point close to you.</string>
 </dict>
 </plist>
 PLIST

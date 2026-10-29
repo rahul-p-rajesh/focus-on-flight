@@ -1,10 +1,10 @@
-# Contrail: Requirements
+# Focus on Flight: Requirements
 
-Name: **Contrail**. Updated 2026-10-29. Owner: Rahul.
+Name: **Focus on Flight** (originally Contrail). Updated 2026-10-29. Owner: Rahul.
 
 ## 1. Summary
 
-Contrail is a personal macOS focus app. Each session is a flight from one place
+Focus on Flight is a personal macOS focus app. Each session is a flight from one place
 on Earth to another, at real speed. While you work, you look down on real
 satellite scenery moving under a small white plane, with town names and
 airports below, ambient sound, and the travel time left always in view.
