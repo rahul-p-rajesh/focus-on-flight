@@ -73,9 +73,10 @@ airports below, ambient sound, and the travel time left always in view.
   shadow and no coloured lights. Two contrails trail from the engines under the
   wings once the plane is up, and a soft white line traces the whole route
   through the plane.
-- **FR-5.3** Flying height setting: low (2.6 km, closest and fastest-looking),
-  medium (4 km, default) or high (10 km, widest and calmest). Takeoff and
-  landing start and end at 2 km.
+- **FR-5.3** Flying height setting: low (5 km, closest and fastest-looking),
+  medium (9 km, default) or high (14 km, widest and calmest). Takeoff and
+  landing start and end at 2 km. The plane reaches cruise speed within about
+  90 seconds, so it never crawls near the airport.
 - **FR-5.3a** During a flight the map can be dragged, zoomed and rotated. The
   plane keeps flying and is drawn at its real position; "Re-center" (or R)
   follows it again.

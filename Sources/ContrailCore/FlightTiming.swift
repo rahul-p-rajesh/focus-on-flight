@@ -27,7 +27,7 @@ public enum FlightProfile {
     /// Lowest camera height, at takeoff and landing.
     public static let groundAltitudeM = 2_000.0
     /// Default camera height at cruise. Lower shows more detail and makes the ground move faster on screen.
-    public static let cruiseAltitudeM = 4_000.0
+    public static let cruiseAltitudeM = 9_000.0
 
     /// Seconds spent climbing (and descending) for a flight of `duration` seconds.
     public static func climbSeconds(duration: Double) -> Double {
@@ -52,12 +52,18 @@ public enum FlightProfile {
 
     static func smoothstep(_ x: Double) -> Double { x * x * (3 - 2 * x) }
 
+    /// Seconds to reach cruise speed after takeoff (and to slow down before landing).
+    /// Shorter than the climb, so the plane does not crawl near the airport.
+    public static func accelerationSeconds(duration: Double) -> Double {
+        min(90, max(10, duration * 0.06))
+    }
+
     /// Fraction of the route covered at `elapsed` seconds. Ground speed eases in and
-    /// out during climb and descent so the plane does not jump at takeoff.
+    /// out at each end so the plane does not jump at takeoff or stop dead on landing.
     public static func routeFraction(elapsed: Double, duration: Double) -> Double {
         guard duration > 0 else { return 1 }
         let t = min(max(elapsed / duration, 0), 1)
-        let e = min(0.2, climbSeconds(duration: duration) / duration)
+        let e = min(0.2, accelerationSeconds(duration: duration) / duration)
         // Piecewise: quadratic ease in [0,e], linear, quadratic ease out [1-e,1].
         let v = 1 / (1 - e) // cruise speed so total area is 1
         if t < e { return v * t * t / (2 * e) }

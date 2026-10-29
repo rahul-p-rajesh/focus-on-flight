@@ -76,6 +76,14 @@ let newYork = Coordinate(latitude: 40.6413, longitude: -73.7781)
         #expect(abs(FlightProfile.routeFraction(elapsed: duration, duration: duration) - 1) < 1e-9)
     }
 
+    @Test func reachesCruiseSpeedQuickly() {
+        let d = 3600.0
+        // Within two minutes the plane covers ground at close to cruise speed.
+        let a = FlightProfile.routeFraction(elapsed: 120, duration: d), b = FlightProfile.routeFraction(elapsed: 130, duration: d)
+        let cruise = 10 / (d - FlightProfile.accelerationSeconds(duration: d))
+        #expect(abs((b - a) - cruise) / cruise < 0.01)
+    }
+
     @Test func altitudeClimbsCruisesDescends() {
         let d = 3600.0
         #expect(FlightProfile.altitude(elapsed: 0, duration: d) == FlightProfile.groundAltitudeM)

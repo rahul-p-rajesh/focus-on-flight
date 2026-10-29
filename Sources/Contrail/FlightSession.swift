@@ -49,6 +49,9 @@ struct FlightPlan: Equatable {
 
     private var timer: Timer?
     private var interval: TimeInterval = 0
+    /// Set once the flight has ended. A stopped session never ticks again, even if a view
+    /// that still holds it changes its visibility count.
+    private(set) var isStopped = false
     var tickInterval: TimeInterval { interval }
 
     init(plan: FlightPlan, now: Date = Date()) {
@@ -88,6 +91,7 @@ struct FlightPlan: Equatable {
     func togglePause() { isPaused ? resume() : pause() }
 
     func stop() {
+        isStopped = true
         timer?.invalidate()
         timer = nil
     }
@@ -103,13 +107,14 @@ struct FlightPlan: Equatable {
     }
 
     private func retime() {
+        guard !isStopped else { return }
         let want = desiredInterval
         guard want != interval || timer == nil else { return }
         interval = want
         timer?.invalidate()
         let t = Timer(timeInterval: want, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated {
-                guard let self else { return }
+                guard let self, !self.isStopped else { return }
                 let t = Date()
                 self.now = t
                 if Int(t.timeIntervalSince1970) != Int(self.slowNow.timeIntervalSince1970) {

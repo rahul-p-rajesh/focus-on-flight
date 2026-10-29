@@ -216,6 +216,9 @@ enum PickTarget { case origin, destination }
     }
 
     private func tick(_ s: FlightSession) {
+        // Only the flight in progress may land or change anything. A tick from an earlier,
+        // ended flight must never land the current one.
+        guard s === flight, !s.isStopped else { s.stop(); return }
         if s.isFinished { finish(.landed); return }
         if Date().timeIntervalSince(lastRegionLookup) > 120 {
             lastRegionLookup = Date()

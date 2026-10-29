@@ -11,6 +11,8 @@ import SwiftUI
     static var shared: DebugBridge?
     let dir: URL
     weak var model: AppModel?
+    /// Test-only: keeps an ended flight alive, like a lingering view would.
+    private var retained: FlightSession?
     private var observer: NSObjectProtocol?
 
     static func startIfRequested(_ model: AppModel) {
@@ -77,7 +79,8 @@ import SwiftUI
         case "takeoff": m.takeOff()
         case "skipTakeoff": m.flight?.takeoffRunning = false
         case "pause": m.togglePause()
-        case "end": m.endEarly()
+        case "end": retained = m.flight; m.endEarly()
+        case "poke": retained?.sceneViewers += 1 // what used to restart an ended flight's timer
         case "desktop": m.toggleDesktopMode()
         case "globe": m.showGlobe.toggle()
         case "sound": m.soundPanelRequest += 1

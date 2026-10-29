@@ -79,7 +79,7 @@ struct FlightSceneView: View {
         .onAppear {
             if session.takeoffRunning { runTakeoff() } else { updateCamera(animated: false) }
         }
-        .onDisappear { setVisible(false) }
+        .onDisappear { if counted { counted = false; session.sceneViewers -= 1 } }
         .onChange(of: session.now) { if !session.takeoffRunning && !exploring { updateCamera(animated: true) } }
         .onChange(of: position.positionedByUser) { if position.positionedByUser && canExplore { exploring = true } }
         .onChange(of: session.takeoffRunning) { if !session.takeoffRunning { updateCamera(animated: false) } }

@@ -110,7 +110,7 @@ struct SoundMix: Codable, Equatable {
 enum CruiseAltitude: String, Codable, CaseIterable, Identifiable {
     case low, medium, high
     var id: String { rawValue }
-    var metres: Double { switch self { case .low: 2_600; case .medium: 4_000; case .high: 10_000 } }
+    var metres: Double { switch self { case .low: 5_000; case .medium: 9_000; case .high: 14_000 } }
     var title: String { switch self { case .low: "Low · closest, fastest"; case .medium: "Medium"; case .high: "High · widest, calmest" } }
 }
 
