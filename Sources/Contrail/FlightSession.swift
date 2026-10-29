@@ -82,6 +82,9 @@ struct FlightPlan: Equatable {
     var hudElapsed: TimeInterval { clock.elapsed(at: slowNow) }
     var hudRemaining: TimeInterval { clock.remaining(at: slowNow) }
     var hudFraction: Double { plan.track.routeFraction(at: hudElapsed) }
+    /// Plane position and heading, updated once a second, for zoomed-out views where faster updates only add jitter.
+    var hudPosition: Coordinate { plan.track.position(at: hudElapsed) }
+    var hudHeading: Double { plan.track.heading(at: hudElapsed) }
     var landingTime: Date { clock.landingTime(at: slowNow) }
 
     // MARK: Controls

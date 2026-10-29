@@ -38,10 +38,10 @@ struct FlightSceneView: View {
                 if showGlobe {
                     MapPolyline(coordinates: session.plan.path.map(\.cl))
                         .stroke(Theme.accent.opacity(0.9), style: StrokeStyle(lineWidth: 2.5, lineCap: .round, dash: [7, 6]))
-                    Annotation("", coordinate: session.position.cl) {
+                    Annotation("", coordinate: session.hudPosition.cl) {
                         Image(systemName: "airplane")
                             .font(.system(size: 18, weight: .semibold))
-                            .rotationEffect(.degrees(session.heading - 90))
+                            .rotationEffect(.degrees(session.hudHeading - 90))
                             .foregroundStyle(.white)
                             .shadow(color: .black.opacity(0.6), radius: 4)
                     }
@@ -80,7 +80,8 @@ struct FlightSceneView: View {
             if session.takeoffRunning { runTakeoff() } else { updateCamera(animated: false) }
         }
         .onDisappear { if counted { counted = false; session.sceneViewers -= 1 } }
-        .onChange(of: session.now) { if !session.takeoffRunning && !exploring { updateCamera(animated: true) } }
+        // The globe view frames the whole route once and holds still; only the close-up view follows the plane.
+        .onChange(of: session.now) { if !session.takeoffRunning && !exploring && !showGlobe { updateCamera(animated: true) } }
         .onChange(of: position.positionedByUser) { if position.positionedByUser && canExplore { exploring = true } }
         .onChange(of: session.takeoffRunning) { if !session.takeoffRunning { updateCamera(animated: false) } }
         .onChange(of: showGlobe) { exploring = false; withAnimation(.easeInOut(duration: 1.6)) { position = .camera(camera()) } }
@@ -96,8 +97,10 @@ struct FlightSceneView: View {
 
     private func camera() -> MapCamera {
         if showGlobe {
+            // Frame the whole route, centred between the two airports.
             let km = session.plan.distanceKm
-            return MapCamera(centerCoordinate: session.position.cl, distance: min(22_000_000, max(1_800_000, km * 1000 * 2.6)),
+            let mid = Geo.interpolate(session.plan.origin.coordinate, session.plan.destination.coordinate, fraction: 0.5)
+            return MapCamera(centerCoordinate: mid.cl, distance: min(22_000_000, max(1_500_000, km * 1000 * 2.8)),
                              heading: 0, pitch: 0)
         }
         return MapCamera(centerCoordinate: session.position.cl, distance: session.altitude, heading: session.heading, pitch: 0)
