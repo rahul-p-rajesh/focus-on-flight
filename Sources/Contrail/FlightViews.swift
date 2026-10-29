@@ -13,14 +13,27 @@ struct FlightSceneView: View {
     @State private var position: MapCameraPosition = .automatic
     @State private var didStartTakeoff = false
     @State private var counted = false
+    /// True after the user drags, zooms or rotates the map: the camera stops following the plane
+    /// until "Re-center". The plane is then drawn on the map at its real position.
+    @State private var exploring = false
+    @State private var mapHeading = 0.0
+
+    private var canExplore: Bool { !isDesktop && !session.takeoffRunning }
 
     var body: some View {
         ZStack {
-            Map(position: $position, interactionModes: []) {
+            Map(position: $position, interactionModes: canExplore ? .all : []) {
                 if !showGlobe {
                     // Soft line along the whole route; the plane flies right along it.
                     MapPolyline(coordinates: [session.plan.origin.coordinate.cl, session.plan.destination.coordinate.cl], contourStyle: .geodesic)
                         .stroke(.white.opacity(0.32), style: StrokeStyle(lineWidth: 1.6, lineCap: .round))
+                    if exploring {
+                        Annotation("", coordinate: session.position.cl) {
+                            PlaneSilhouetteView(span: 30)
+                                .rotationEffect(.degrees(session.heading - mapHeading))
+                        }
+                        .annotationTitles(.hidden)
+                    }
                 }
                 if showGlobe {
                     MapPolyline(coordinates: session.plan.path.map(\.cl))
@@ -37,21 +50,40 @@ struct FlightSceneView: View {
             }
             .mapStyle(Self.style(labels: session.plan.mapLabels))
             .mapControls {}
+            .onMapCameraChange(frequency: .onEnd) { mapHeading = $0.camera.heading }
             .overlay { SceneTint(strength: showGlobe ? 0.5 : 1).allowsHitTesting(false) }
 
-            if !showGlobe {
+            if !showGlobe && !exploring {
                 PlaneWithContrails(session: session, smooth: model.settings.smoothMotion).allowsHitTesting(false)
             }
         }
+        .overlay(alignment: .topTrailing) {
+            if exploring && !isDesktop {
+                Button { recenter() } label: {
+                    Label("Re-center", systemImage: "location.north.line.fill")
+                        .font(.system(size: 13, weight: .semibold))
+                        .padding(.horizontal, 14).padding(.vertical, 9)
+                        .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .glassEffect(.regular.tint(Theme.accent.opacity(0.25)).interactive(), in: .capsule)
+                .keyboardShortcut("r", modifiers: [])
+                .help("Follow the plane again (R)")
+                .padding(.top, 62).padding(.trailing, 18)
+                .transition(.opacity)
+            }
+        }
+        .animation(.easeInOut(duration: 0.25), value: exploring)
         .ignoresSafeArea()
         .background(OcclusionReader { setVisible($0) })
         .onAppear {
             if session.takeoffRunning { runTakeoff() } else { updateCamera(animated: false) }
         }
         .onDisappear { setVisible(false) }
-        .onChange(of: session.now) { if !session.takeoffRunning { updateCamera(animated: true) } }
+        .onChange(of: session.now) { if !session.takeoffRunning && !exploring { updateCamera(animated: true) } }
+        .onChange(of: position.positionedByUser) { if position.positionedByUser && canExplore { exploring = true } }
         .onChange(of: session.takeoffRunning) { if !session.takeoffRunning { updateCamera(animated: false) } }
-        .onChange(of: showGlobe) { withAnimation(.easeInOut(duration: 1.6)) { position = .camera(camera()) } }
+        .onChange(of: showGlobe) { exploring = false; withAnimation(.easeInOut(duration: 1.6)) { position = .camera(camera()) } }
     }
 
     /// Satellite imagery, with town names, roads and airports when labels are on.
@@ -73,6 +105,11 @@ struct FlightSceneView: View {
 
     /// Each tick moves the camera to where the plane is now. Animating that move over one tick lets
     /// MapKit glide between positions instead of stepping, which removes the jitter.
+    private func recenter() {
+        exploring = false
+        withAnimation(.easeInOut(duration: 1.0)) { position = .camera(camera()) }
+    }
+
     private func updateCamera(animated: Bool) {
         if animated, !showGlobe, model.settings.smoothMotion, session.tickInterval < 0.5 {
             withAnimation(.linear(duration: session.tickInterval)) { position = .camera(camera()) }
@@ -206,11 +243,10 @@ struct FlightView: View {
     var body: some View {
         ZStack {
             FlightSceneView(session: session, model: model, showGlobe: model.showGlobe)
-                .contentShape(Rectangle())
-                .onTapGesture {
+                .simultaneousGesture(TapGesture().onEnded {
                     if session.takeoffRunning { session.takeoffRunning = false }
                     lastMove = Date()
-                }
+                })
 
             if session.takeoffRunning {
                 VStack(spacing: 6) {

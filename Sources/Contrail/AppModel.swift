@@ -161,6 +161,7 @@ enum PickTarget { case origin, destination }
         draft.suggestionsLoading = true
         let minutes = draft.minutes, rotation = draft.suggestionRotation
         let exclude = shuffle ? Set(draft.suggestions.map(\.place.code)) : []
+        let previous = draft.suggestions.map(\.place)
         suggestionTask = Task {
             try? await Task.sleep(for: .milliseconds(250)) // debounce slider drags
             guard !Task.isCancelled else { return }
@@ -169,7 +170,8 @@ enum PickTarget { case origin, destination }
             draft.suggestions = result.picks
             draft.suggestionsWidened = result.widened
             draft.suggestionsLoading = false
-            if let d = draft.destination, !result.picks.contains(where: { $0.place == d }) { draft.destination = nil }
+            // Drop an arrival picked from the old list; keep one the user chose themselves.
+            if let d = draft.destination, previous.contains(d), !result.picks.contains(where: { $0.place == d }) { draft.destination = nil }
         }
     }
 

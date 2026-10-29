@@ -24,10 +24,10 @@ public enum FlightTiming {
 
 /// Camera height profile: climb at the start, cruise, descend at the end.
 public enum FlightProfile {
-    /// Lowest camera height. Lower than this, imagery in remote areas turns soft.
-    public static let groundAltitudeM = 3_200.0
-    /// Default camera height at cruise. Lower shows more detail.
-    public static let cruiseAltitudeM = 10_000.0
+    /// Lowest camera height, at takeoff and landing.
+    public static let groundAltitudeM = 2_000.0
+    /// Default camera height at cruise. Lower shows more detail and makes the ground move faster on screen.
+    public static let cruiseAltitudeM = 4_000.0
 
     /// Seconds spent climbing (and descending) for a flight of `duration` seconds.
     public static func climbSeconds(duration: Double) -> Double {

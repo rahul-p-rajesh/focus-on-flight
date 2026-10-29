@@ -81,9 +81,9 @@ let newYork = Coordinate(latitude: 40.6413, longitude: -73.7781)
         #expect(FlightProfile.altitude(elapsed: 0, duration: d) == FlightProfile.groundAltitudeM)
         #expect(FlightProfile.altitude(elapsed: d / 2, duration: d) == FlightProfile.cruiseAltitudeM)
         #expect(FlightProfile.altitude(elapsed: d, duration: d) == FlightProfile.groundAltitudeM)
-        #expect(FlightProfile.altitude(elapsed: d / 2, duration: d, cruise: 6_000) == 6_000)
+        #expect(FlightProfile.altitude(elapsed: d / 2, duration: d, cruise: 9_000) == 9_000)
         #expect(FlightProfile.climbProgress(altitude: FlightProfile.groundAltitudeM) == 0)
-        #expect(FlightProfile.climbProgress(altitude: 6_000, cruise: 6_000) == 1)
+        #expect(FlightProfile.climbProgress(altitude: 9_000, cruise: 9_000) == 1)
     }
 }
 

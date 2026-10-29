@@ -45,7 +45,8 @@ airports below, ambient sound, and the travel time left always in view.
 - **FR-2.3** The app lists up to 8 real airports whose flight time matches,
   spread around the compass, medium and large airports first. Made-up airfields
   at real towns appear only where fewer than three real airports fit.
-- **FR-2.4** "Shuffle" shows a different set. The user picks one.
+- **FR-2.4** "Shuffle" shows a different set. The user picks one, or chooses
+  their own arrival with search, "Near me" or the globe.
 
 ### FR-3 Plan by route
 
@@ -72,9 +73,12 @@ airports below, ambient sound, and the travel time left always in view.
   shadow and no coloured lights. Two contrails trail from the engines under the
   wings once the plane is up, and a soft white line traces the whole route
   through the plane.
-- **FR-5.3** Flying height setting: low (5.5 km, most detail), medium (10 km,
-  default) or high (20 km). The camera never goes below 3.2 km, where imagery in
-  remote areas turns soft.
+- **FR-5.3** Flying height setting: low (2.6 km, closest and fastest-looking),
+  medium (4 km, default) or high (10 km, widest and calmest). Takeoff and
+  landing start and end at 2 km.
+- **FR-5.3a** During a flight the map can be dragged, zoomed and rotated. The
+  plane keeps flying and is drawn at its real position; "Re-center" (or R)
+  follows it again.
 - **FR-5.4** Motion setting: Smooth (the camera glides every frame) or Energy
   saver (small steps a few times a second).
 - **FR-5.5** Travel time left is always visible at the top right of the flight

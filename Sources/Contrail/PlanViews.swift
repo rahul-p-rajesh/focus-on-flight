@@ -224,6 +224,9 @@ struct PlanPanel: View {
                     PlaceField(label: "To", target: .destination, model: model)
                 } else {
                     durationPicker
+                    if draft.origin != nil {
+                        PlaceField(label: "Or choose your own arrival", target: .destination, model: model)
+                    }
                 }
                 routeSummary
                 categoryPicker
