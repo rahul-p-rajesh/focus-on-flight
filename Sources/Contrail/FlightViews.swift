@@ -154,21 +154,21 @@ struct PlaneScene: View {
     var body: some View {
         GeometryReader { geo in
             let trail = Self.smooth((climb - 0.4) / 0.5)
-            let span = 76 * (1 + (1 - climb) * 0.5)
+            let span = 72 * (1 + (1 - climb) * 0.5)
             let c = CGPoint(x: geo.size.width / 2, y: geo.size.height / 2)
             Canvas { ctx, size in
                 guard trail > 0.01 else { return }
-                let unit = span / 76
+                let unit = span / 72
                 let spacing = 3.2 * unit
                 let travelled = time * groundSpeed
                 let base = floor(travelled / spacing)
                 let frac = travelled - base * spacing
                 let count = Int(min(size.height * 0.42, 320) / spacing)
-                for (side, ex) in [(-1.0, -0.19), (1.0, 0.19)] {
+                for (side, ex) in [(-1.0, -PrivateJetView.exhaustX), (1.0, PrivateJetView.exhaustX)] {
                     for i in 0..<count {
                         let tt = Double(i) / Double(count)
                         let n = base - Double(i) // stable id per puff, so its wobble travels with it
-                        let y = c.y + span * 0.07 + Double(i) * spacing + frac
+                        let y = c.y + span * PrivateJetView.exhaustY + Double(i) * spacing + frac
                         // Nearly straight trails that slowly widen and drift apart, with a faint ripple.
                         let wobble = (sin(n * 0.29 + side * 1.3) * tt * 0.7 + side * tt * 5) * unit
                         let r = (1.4 + tt * 4.2) * unit
@@ -179,7 +179,7 @@ struct PlaneScene: View {
                 }
             }
             .blur(radius: 1.1)
-            AirlinerView(span: span, time: time).position(c)
+            PrivateJetView(span: span).position(c)
         }
     }
 
@@ -224,6 +224,25 @@ struct FlightView: View {
 
             if !session.takeoffRunning && hudVisible {
                 hud.transition(.opacity)
+            }
+
+            if !session.takeoffRunning {
+                // Always-visible travel time left, top right.
+                VStack {
+                    HStack {
+                        Spacer()
+                        HStack(spacing: 6) {
+                            Image(systemName: "airplane").font(.system(size: 11, weight: .semibold))
+                            Text(TimeFormat.clock(session.hudRemaining)).font(.system(size: 13, weight: .medium, design: .monospaced))
+                        }
+                        .padding(.horizontal, 12).padding(.vertical, 7)
+                        .glassPanel(radius: 14)
+                        .accessibilityLabel("Travel time left \(TimeFormat.clock(session.hudRemaining))")
+                    }
+                    Spacer()
+                }
+                .padding(.top, 16).padding(.trailing, 18)
+                .allowsHitTesting(false)
             }
 
             if let b = model.banner {
@@ -289,7 +308,7 @@ struct FlightView: View {
     }
 }
 
-/// Route progress, time left, current Pomodoro period and region.
+/// Route progress, travel time left, landing time and region.
 struct FlightStatusCard: View {
     let session: FlightSession
     let model: AppModel
@@ -302,23 +321,13 @@ struct FlightStatusCard: View {
                 ProgressTrack(progress: session.hudFraction)
                 Text(session.plan.destination.code).font(.system(size: 13, weight: .semibold, design: .monospaced))
             }
-            if session.plan.schedule.enabled && session.segments.count > 1 {
-                PomodoroBar(segments: session.segments, elapsed: session.hudElapsed, total: session.plan.duration)
-            }
             HStack(alignment: .lastTextBaseline) {
                 Text(TimeFormat.clock(session.hudRemaining))
                     .font(.system(size: compact ? 30 : 38, weight: .light, design: .monospaced))
                     .accessibilityLabel("Time remaining \(TimeFormat.clock(session.hudRemaining))")
                 Spacer()
                 VStack(alignment: .trailing, spacing: 3) {
-                    if session.plan.schedule.enabled {
-                        let pos = session.hudFocusPosition
-                        Text(session.isOnBreak
-                             ? "Break · \(TimeFormat.clock(session.hudSegmentRemaining)) left"
-                             : "Focus \(pos.index) of \(pos.count) · \(TimeFormat.clock(session.hudSegmentRemaining)) left")
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundStyle(session.isOnBreak ? Theme.accent : .white)
-                    }
+                    Text("Travel time left").font(.system(size: 13, weight: .medium))
                     if !compact, let r = session.regionName {
                         Text("Over \(r)").font(.system(size: 12)).foregroundStyle(Theme.dim)
                     }
@@ -380,36 +389,5 @@ struct DesktopControlPanel: View {
             Button("End flight", role: .destructive) { model.endEarly() }
             Button("Keep flying", role: .cancel) {}
         }
-    }
-}
-
-/// One piece per focus block (white) and break (blue), sized by length, filling as the flight goes.
-struct PomodoroBar: View {
-    let segments: [PomodoroSchedule.Segment]
-    /// Seconds into the flight. Pass 0 for a preview.
-    let elapsed: TimeInterval
-    let total: TimeInterval
-    var height: CGFloat = 6
-
-    var body: some View {
-        GeometryReader { geo in
-            let gap: CGFloat = 3
-            let usable = max(0, geo.size.width - gap * CGFloat(max(0, segments.count - 1)))
-            HStack(spacing: gap) {
-                ForEach(Array(segments.enumerated()), id: \.offset) { _, seg in
-                    let w = usable * seg.length / max(total, 1)
-                    let fill = min(1, max(0, (elapsed - seg.start) / max(seg.length, 1)))
-                    let isBreak = seg.kind == .rest
-                    ZStack(alignment: .leading) {
-                        Capsule().fill(isBreak ? Theme.accent.opacity(0.22) : Color.white.opacity(0.14))
-                        Capsule().fill(isBreak ? Theme.accent : Color.white.opacity(0.85)).frame(width: w * fill)
-                    }
-                    .frame(width: w)
-                }
-            }
-        }
-        .frame(height: height)
-        .accessibilityElement()
-        .accessibilityLabel("Pomodoro plan: \(segments.filter { $0.kind == .focus }.count) focus blocks, \(segments.filter { $0.kind == .rest }.count) breaks")
     }
 }

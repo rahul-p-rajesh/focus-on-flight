@@ -115,7 +115,6 @@ enum CruiseAltitude: String, Codable, CaseIterable, Identifiable {
 }
 
 struct AppSettings: Codable, Equatable {
-    var pomodoro = PomodoroSchedule()
     var cruiseAltitude: CruiseAltitude = .medium
     /// Town names, roads and airports drawn over the satellite imagery.
     var mapLabels = true
@@ -135,7 +134,6 @@ struct AppSettings: Codable, Equatable {
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         let d = AppSettings()
-        pomodoro = try c.decodeIfPresent(PomodoroSchedule.self, forKey: .pomodoro) ?? d.pomodoro
         cruiseAltitude = (try? c.decodeIfPresent(CruiseAltitude.self, forKey: .cruiseAltitude)) ?? d.cruiseAltitude
         mapLabels = try c.decodeIfPresent(Bool.self, forKey: .mapLabels) ?? d.mapLabels
         smoothMotion = try c.decodeIfPresent(Bool.self, forKey: .smoothMotion) ?? d.smoothMotion

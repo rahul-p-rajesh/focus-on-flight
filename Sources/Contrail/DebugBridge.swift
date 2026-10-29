@@ -57,11 +57,10 @@ import SwiftUI
                 if ll.count == 2 { Task { await m.pick(Coordinate(latitude: ll[0], longitude: ll[1]), for: p[0] == "origin" ? .origin : .destination); log("picked \(m.draft.origin?.name ?? "-") / \(m.draft.destination?.name ?? "-")") } }
             }
         case "goal": m.draft.goal = arg
-        case "study": m.draft.studyMinutes = Double(arg)
         case "plan":
             if let pl = m.boardingPlan {
-                log(String(format: "plan study=%.0fmin journey=%.0fmin breaks=%d prefill=%.0f", pl.focusSeconds / 60, pl.duration / 60,
-                           pl.schedule.breakCount(total: pl.duration), m.routeStudyMinutes ?? -1))
+                let kmh = pl.distanceKm / max(pl.track.flightSeconds, 1) * 3600
+                log(String(format: "plan flight=%.0fmin lands=%@ (%@) avgKmh=%.0f", pl.duration / 60, pl.destination.code, pl.destination.name, kmh))
             } else { log("plan none") }
         case "search":
             // search:origin:query — logs results and picks the first
@@ -106,11 +105,11 @@ import SwiftUI
     private func state() -> String {
         guard let m = model else { return "" }
         var s = "stage=\(m.stage) tab=\(m.tab) desktop=\(m.desktopMode) records=\(m.records.count)"
-        s += " origin=\(m.draft.origin?.code ?? "-") dest=\(m.draft.destination?.code ?? "-") suggestions=\(m.draft.suggestions.map(\.place.code).joined(separator: ","))"
+        s += " mode=\(m.draft.mode.rawValue) origin=\(m.draft.origin?.code ?? "-") dest=\(m.draft.destination?.code ?? "-") suggestions=\(m.draft.suggestions.map { "\($0.place.code)\($0.place.isMadeUp ? "*" : "")/\(Int($0.minutes.rounded()))m" }.joined(separator: ","))"
         if let f = m.flight {
             s += String(format: " elapsed=%.1f remaining=%.1f frac=%.4f alt=%.0f heading=%.1f paused=%@ break=%@ takeoff=%@ viewers=%d region=%@",
-                        f.elapsed, f.remaining, f.routeFraction, f.altitude, f.heading, "\(f.isPaused)", "\(f.isOnBreak)", "\(f.takeoffRunning)", f.sceneViewers, f.regionName ?? "-")
-            s += String(format: " interval=%.2f", f.tickInterval)
+                        f.elapsed, f.remaining, f.routeFraction, f.altitude, f.heading, "\(f.isPaused)", "false", "\(f.takeoffRunning)", f.sceneViewers, f.regionName ?? "-")
+            s += String(format: " interval=%.2f lat=%.4f lon=%.4f", f.tickInterval, f.position.latitude, f.position.longitude)
         }
         s += " audio=[\(m.sound.debugState)]"
         s += " mix=\(m.settings.mix.active.sorted()) music=\(m.settings.mix.music ?? "-") master=\(m.settings.mix.masterOn)"
@@ -160,7 +159,7 @@ import SwiftUI
     private func previewHUD() {
         guard let m = model, let a = m.airports.search("ORD", limit: 1).first, let b = m.airports.search("DEN", limit: 1).first,
               let cat = m.activeCategories.first else { return }
-        let plan = FlightPlan(origin: a.place, destination: b.place, schedule: PomodoroSchedule(), seat: "12A", categoryID: cat.id, goal: "Preview")
+        let plan = FlightPlan(origin: a.place, destination: b.place, seat: "12A", categoryID: cat.id, goal: "Preview")
         let s = FlightSession(plan: plan, now: Date().addingTimeInterval(-40 * 60))
         s.stop()
         let view = FlightStatusCard(session: s, model: m).frame(width: 600).padding(30)

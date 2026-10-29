@@ -1,8 +1,9 @@
 # Contrail
 
-A personal macOS focus timer. Each focus session is a flight between two places on
-Earth: you look down on real satellite scenery that moves under your plane while a
-Pomodoro timer runs, with ambient sound and music you choose.
+A personal macOS focus app. Each session is a flight between two places on Earth at
+real speed: you look down on satellite scenery with town names and airports moving
+under a private jet, with ambient sound you choose and the travel time left always
+in view. Pick how long you want to fly and choose from real airports that far away.
 
 ## Run it
 
@@ -21,17 +22,18 @@ been accepted).
 ./scripts/test.sh
 ```
 
-Unit tests cover the route maths, flight timing, pause-aware clock, Pomodoro
-schedule, airport search, made-up place names, destination suggestions, logbook
-summaries and CSV export.
+Unit tests cover the route maths, flight timing and track, pause-aware clock,
+airport search, made-up place names, destination suggestions, logbook summaries
+and CSV export.
 
 ## How it works
 
 | Part | Where |
 |---|---|
-| Route maths, timing, Pomodoro, naming, logbook | `Sources/ContrailCore` (no UI, unit-tested) |
+| Route maths, timing, flight track, naming, logbook | `Sources/ContrailCore` (no UI, unit-tested) |
 | App model, flight session | `Sources/Contrail/AppModel.swift`, `FlightSession.swift` |
 | Moving scene, HUD, desktop panel | `Sources/Contrail/FlightViews.swift` |
+| Private jet drawing | `Sources/Contrail/AirlinerView.swift` |
 | Planning, boarding, landing, logbook, settings | `Sources/Contrail/*View*.swift` |
 | Sound mixer | `Sources/Contrail/SoundMixer.swift`, `SoundViews.swift` |
 | Desktop mode, notifications, wallpaper sync | `Sources/Contrail/SystemServices.swift` |
@@ -41,8 +43,9 @@ summaries and CSV export.
   route, heading-up, and climbs and descends at the ends.
 - **Desktop mode**: borderless windows at the macOS desktop window level, one per
   display, so the flight runs behind icons and windows.
-- **Energy**: the scene updates 10 times a second while climbing or descending, 5 at
-  cruise, and once a second when no window shows it.
+- **Motion**: with Smooth motion, MapKit glides the camera between updates; Energy
+  saver steps it 5 to 10 times a second. Either way the scene drops to once a
+  second when no window shows it.
 - **Data**: JSON files in `~/Library/Application Support/Contrail`.
 
 ## Data sources
@@ -65,4 +68,5 @@ For testing only; none are needed in normal use.
 | `--demo-route LHR,FCO --demo-stage plan\|boarding\|flight\|landed` | Jump to a stage |
 | `--time-scale 60` | Fly 60 times faster |
 | `--seed-logbook` | Fill an empty test logbook (only with `--data-dir`) |
-| `--debug-bridge DIR` | Accept test commands and write window snapshots to DIR |
+| `--debug-bridge DIR` | Accept test commands, write window snapshots and offscreen previews to DIR |
+| `--force-visible` | Treat the scene as visible (for timing tests) |

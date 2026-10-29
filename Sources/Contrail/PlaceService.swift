@@ -90,33 +90,33 @@ extension Coordinate {
 
     // MARK: Suggestions
 
-    /// Destinations about `minutes` away, spread around the compass.
-    func suggestions(origin: Coordinate, minutes: Double, rotation: Double) async -> (picks: [DestinationCandidate], widened: Bool) {
-        let ringKm = FlightTiming.distanceKm(forMinutes: minutes)
-        let probes = DestinationFinder.probePoints(origin: origin, minutes: minutes, count: 24, rotation: rotation)
-        let radius = min(150, max(40, ringKm * 0.15))
-        var candidates: [Place] = []
-        var coveredBearings: [Double] = []
-        for p in probes {
-            let near = airports.nearby(p.point, withinKm: radius, limit: 3)
-            candidates += near.map { $0.airport.place }
-            if !near.isEmpty { coveredBearings.append(p.bearing) }
+    /// Real airports whose flight time is about `minutes`, spread around the compass, bigger airports first.
+    /// Made-up airfields at real towns fill in only where fewer than three airports fit (remote areas).
+    func suggestions(origin: Coordinate, minutes: Double, rotation: Double, exclude: Set<String> = []) async -> (picks: [DestinationCandidate], widened: Bool) {
+        // Prefer medium and large airports; use small ones only when too few bigger ones fit.
+        for (widen, minSize) in [(0, 1), (0, 0), (1, 1), (1, 0), (2, 0)] {
+            let tol = DestinationFinder.tolerance(forMinutes: minutes, widen: widen)
+            var real = airports.airports
+                .filter { $0.size >= minSize && abs(FlightTiming.minutes(forDistanceKm: Geo.distanceKm(origin, $0.coordinate)) - minutes) <= tol }
+                .sorted { ($0.size, PlaceNamer.stableHash($0.code + "\(rotation)")) > ($1.size, PlaceNamer.stableHash($1.code + "\(rotation)")) }
+                .map(\.place)
+            // Shuffle: leave out what was just shown, if enough others fit.
+            let fresh = real.filter { !exclude.contains($0.code) }
+            if fresh.count >= 3 { real = fresh }
+            let picks = DestinationFinder.select(origin: origin, targetMinutes: minutes, candidates: real, tolerance: tol, limit: 8)
+            if picks.count >= 3 { return (picks, widen > 0) }
         }
-        // Fill directions with no airport using made-up airfields at real towns (skip open water).
+        // Remote areas: add made-up airfields at real towns around the ring.
+        var candidates = airports.airports.map(\.place)
         var lookups = 0
-        for p in probes where lookups < 10 && !coveredBearings.contains(where: { Geo.bearingGap($0, p.bearing) < 20 }) {
+        for p in DestinationFinder.probePoints(origin: origin, minutes: minutes, count: 12, rotation: rotation) where lookups < 8 {
             lookups += 1
             guard let info = await reverse(p.point), info.city != nil || info.region != nil else { continue }
             candidates.append(PlaceNamer.madeUpPlace(at: p.point, nearestPlaceName: info.city, locality: info.region,
                                                      isTaken: { [airports] in airports.isRealCode($0) }))
-            coveredBearings.append(p.bearing)
         }
-        for widen in 0...2 {
-            let picks = DestinationFinder.select(origin: origin, targetMinutes: minutes, candidates: candidates,
-                                                 tolerance: DestinationFinder.tolerance(forMinutes: minutes, widen: widen), limit: 6)
-            if picks.count >= 3 || widen == 2 { return (picks, widen > 0) }
-        }
-        return ([], false)
+        let tol = DestinationFinder.tolerance(forMinutes: minutes, widen: 2)
+        return (DestinationFinder.select(origin: origin, targetMinutes: minutes, candidates: candidates, tolerance: tol, limit: 8), true)
     }
 }
 

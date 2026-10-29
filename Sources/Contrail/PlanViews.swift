@@ -242,12 +242,12 @@ struct PlanPanel: View {
     private var durationPicker: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                SectionLabel("Study time")
+                SectionLabel("How long do you want to fly?")
                 Spacer()
                 Text(TimeFormat.duration(minutes: draft.minutes)).font(.system(size: 13, weight: .semibold, design: .monospaced))
             }
             Slider(value: $draft.minutes, in: 15...240, step: 5) {
-                Text("Study time")
+                Text("Flight time")
             } onEditingChanged: { editing in
                 if !editing { model.refreshSuggestions() }
             }
@@ -297,48 +297,15 @@ struct PlanPanel: View {
     }
 
     @ViewBuilder private var routeSummary: some View {
-        if let km = model.draftDistanceKm, let routeMinutes = model.draftMinutes {
-            VStack(alignment: .leading, spacing: 10) {
+        if let km = model.draftDistanceKm, let m = model.draftMinutes {
+            VStack(alignment: .leading, spacing: 4) {
                 HStack {
-                    Text(model.settings.units.format(km))
+                    Text("\(TimeFormat.duration(minutes: m)) flight").font(.system(size: 15, weight: .semibold))
                     Text("·").foregroundStyle(Theme.faint)
-                    Text("\(TimeFormat.duration(minutes: routeMinutes)) by air").foregroundStyle(Theme.dim)
+                    Text(model.settings.units.format(km)).foregroundStyle(Theme.dim)
                 }
                 .font(.system(size: 13))
-                if model.routeProblem == nil, let study = model.effectiveStudyMinutes, let journey = model.journeyMinutes {
-                    HStack {
-                        SectionLabel("Study time")
-                        Spacer()
-                        Text(TimeFormat.duration(minutes: study)).font(.system(size: 15, weight: .semibold, design: .monospaced))
-                    }
-                    if draft.mode == .route {
-                        Slider(value: Binding(get: { study }, set: { draft.studyMinutes = $0 }), in: 15...480, step: 5)
-                            .labelsHidden()
-                            .accessibilityLabel("Study time")
-                        HStack(alignment: .firstTextBaseline) {
-                            Text(draft.studyMinutes == nil ? "Set from the flight time. Drag to choose your own."
-                                                           : "Your plane flies this route in exactly this time.")
-                                .foregroundStyle(Theme.dim)
-                            Spacer()
-                            if draft.studyMinutes != nil {
-                                Button("Use flight time") { draft.studyMinutes = nil }
-                                    .buttonStyle(.plain).foregroundStyle(Theme.accent)
-                            }
-                        }
-                        .font(.system(size: 11))
-                    }
-                    let p = model.settings.pomodoro
-                    let total = journey * 60
-                    if p.enabled {
-                        PomodoroBar(segments: p.segments(total: total), elapsed: 0, total: total, height: 6)
-                        let breaks = p.breakCount(total: total)
-                        Text("\(breaks) break\(breaks == 1 ? "" : "s") of \(Int(p.breakMinutes)) min · journey \(TimeFormat.duration(minutes: journey))")
-                            .font(.system(size: 12)).foregroundStyle(Theme.dim)
-                    } else {
-                        Text("One focus block · journey \(TimeFormat.duration(minutes: journey))")
-                            .font(.system(size: 12)).foregroundStyle(Theme.dim)
-                    }
-                }
+                Text("Your session lasts the real flight time.").font(.system(size: 11)).foregroundStyle(Theme.dim)
                 if let problem = model.routeProblem { Text(problem).font(.system(size: 12)).foregroundStyle(.orange) }
                 if let w = model.routeWarning { Text(w).font(.system(size: 12)).foregroundStyle(.yellow.opacity(0.9)) }
             }

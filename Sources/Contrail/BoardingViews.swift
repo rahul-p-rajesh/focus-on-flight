@@ -7,7 +7,6 @@ struct BoardingPassView: View {
     var body: some View {
         if let plan = model.boardingPlan {
             let realMinutes = plan.duration * model.timeScale / 60
-            let studyMinutes = plan.focusSeconds * model.timeScale / 60
             VStack(alignment: .leading, spacing: 18) {
                 HStack {
                     Text("BOARDING PASS").font(.system(size: 11, weight: .bold)).tracking(2).foregroundStyle(Theme.faint)
@@ -19,8 +18,7 @@ struct BoardingPassView: View {
                     Spacer()
                     VStack(spacing: 4) {
                         Image(systemName: "airplane").font(.system(size: 20)).foregroundStyle(Theme.accent)
-                        Text("\(TimeFormat.duration(minutes: studyMinutes)) study").font(.system(size: 12, weight: .medium, design: .monospaced))
-                        Text("\(TimeFormat.duration(minutes: realMinutes)) journey").font(.system(size: 11, design: .monospaced)).foregroundStyle(Theme.dim)
+                        Text(TimeFormat.duration(minutes: realMinutes)).font(.system(size: 13, weight: .medium, design: .monospaced))
                         Text(model.settings.units.format(plan.distanceKm)).font(.system(size: 11)).foregroundStyle(Theme.faint)
                     }
                     Spacer()
@@ -41,17 +39,7 @@ struct BoardingPassView: View {
                     SectionLabel("Goal")
                     Text(plan.goal).font(.system(size: 15, weight: .medium)).fixedSize(horizontal: false, vertical: true)
                 }
-                if model.settings.pomodoro.enabled && plan.schedule.segments(total: plan.duration).count > 1 {
-                    VStack(alignment: .leading, spacing: 6) {
-                        SectionLabel("Your sessions")
-                        PomodoroBar(segments: plan.schedule.segments(total: plan.duration), elapsed: 0, total: plan.duration, height: 8)
-                    }
-                }
                 VStack(alignment: .leading, spacing: 8) {
-                    let total = plan.duration * model.timeScale
-                    optionRow(model.settings.pomodoro.enabled
-                              ? "Pomodoro breaks: \(Int(model.settings.pomodoro.focusMinutes)) min focus, \(Int(model.settings.pomodoro.breakMinutes)) min break (\(model.settings.pomodoro.breakCount(total: total)) on this flight)"
-                              : "Pomodoro breaks off: one long focus block", $model.settings.pomodoro.enabled)
                     optionRow("Landing chime", $model.settings.chimeOn)
                     optionRow("Desktop mode: fly behind your windows", $model.desktopMode)
                 }
@@ -124,9 +112,8 @@ struct LandedView: View {
                     }
                 }
                 HStack(spacing: 28) {
-                    stat("Focus", TimeFormat.duration(minutes: r.focusSeconds / 60))
+                    stat("Time", TimeFormat.duration(minutes: r.focusSeconds / 60))
                     stat("Flown", model.settings.units.format(r.distanceKm * min(1, r.flownSeconds / max(r.plannedSeconds, 1))))
-                    stat("Breaks", "\(r.breakCount)")
                     stat("Category", model.category(r.categoryID)?.name ?? "—")
                 }
                 VStack(alignment: .leading, spacing: 8) {

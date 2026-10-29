@@ -33,7 +33,6 @@ struct SoundLayer: Identifiable, Hashable {
     var library: [MusicTrack] = [] { didSet { if mix.music == "library" { rebuildLibraryQueue() } } }
     /// 0 before takeoff and after landing, 1 in flight. Faded, not switched.
     private(set) var flightGain = 0.0
-    var ducked = false { didSet { if ducked != oldValue { update() } } }
     /// True while the sound panel is open outside a flight, so changes can be heard.
     var previewing = false { didSet { if previewing != oldValue { update() } } }
     var onMixChange: ((SoundMix) -> Void)?
@@ -109,7 +108,7 @@ struct SoundLayer: Identifiable, Hashable {
         let on = isMusic ? mix.music == id : mix.active.contains(id)
         guard on else { return 0 }
         let base = isMusic ? mix.musicVolume : mix.volume(id)
-        return Float(base * effectiveGain * (isMusic && ducked ? 0.3 : 1))
+        return Float(base * effectiveGain)
     }
 
     private func update() {

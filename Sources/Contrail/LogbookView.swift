@@ -46,7 +46,7 @@ struct LogbookView: View {
     private var totals: some View {
         let t = Logbook.totals(model.records)
         return HStack(spacing: 12) {
-            tile("Focus", String(format: "%.1f h", t.focusHours))
+            tile("Time flown", String(format: "%.1f h", t.focusHours))
             tile("Flights", "\(t.flights)")
             tile("Distance", model.settings.units.format(t.distanceKm))
             tile("Places", "\(t.placesVisited)")
@@ -102,7 +102,7 @@ struct LogbookView: View {
         let bars = sums.flatMap { s in s.stats.map { Bar(day: s.day, category: model.category($0.categoryID)?.name ?? "Other", minutes: $0.focusMinutes) } }
         let cats = model.categories
         return VStack(alignment: .leading, spacing: 8) {
-            Text("Focus minutes per day").font(.system(size: 13)).foregroundStyle(Theme.dim)
+            Text("Minutes per day").font(.system(size: 13)).foregroundStyle(Theme.dim)
             Chart(bars) { b in
                 BarMark(x: .value("Day", b.day, unit: .day), y: .value("Minutes", b.minutes))
                     .foregroundStyle(by: .value("Category", b.category))

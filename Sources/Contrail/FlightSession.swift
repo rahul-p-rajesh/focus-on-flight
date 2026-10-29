@@ -2,34 +2,28 @@ import ContrailCore
 import Foundation
 import Observation
 
-/// Everything decided before takeoff.
+/// Everything decided before takeoff. The session lasts exactly the route's real flight time.
 struct FlightPlan: Equatable {
     var origin: Place
     var destination: Place
     var distanceKm: Double
-    /// Whole journey, breaks included. The plane covers the route in exactly this time.
+    /// Real flight time: taxi, climb, cruise at 850 km/h, descent.
     var duration: TimeInterval
-    /// Study (focus) time the user asked for. Breaks are added on top.
-    var focusSeconds: TimeInterval
-    var schedule: PomodoroSchedule
+    /// The path flown at real cruise speed.
+    var track: FlightTrack
     var seat: String
     var categoryID: UUID
     var goal: String
     var cruiseAltitude: Double = FlightProfile.cruiseAltitudeM
     var mapLabels = true
 
-    /// - Parameter studyMinutes: focus time; nil uses the route's natural flight time.
-    init(origin: Place, destination: Place, schedule: PomodoroSchedule, seat: String, categoryID: UUID, goal: String,
-         studyMinutes: Double? = nil, timeScale: Double = 1) {
+    init(origin: Place, destination: Place, seat: String, categoryID: UUID, goal: String, timeScale: Double = 1) {
         self.origin = origin
         self.destination = destination
         self.distanceKm = Geo.distanceKm(origin.coordinate, destination.coordinate)
-        var s = schedule
-        if timeScale != 1 { s.focusMinutes /= timeScale; s.breakMinutes /= timeScale }
-        self.schedule = s
-        let study = studyMinutes ?? FlightTiming.minutes(forDistanceKm: distanceKm)
-        self.focusSeconds = study * 60 / timeScale
-        self.duration = s.duration(forFocus: focusSeconds)
+        let seconds = FlightTiming.minutes(forDistanceKm: distanceKm) * 60 / timeScale
+        self.track = FlightTrack(origin: origin.coordinate, destination: destination.coordinate, flightSeconds: seconds, holdSeconds: 0)
+        self.duration = track.duration
         self.seat = seat
         self.categoryID = categoryID
         self.goal = goal
@@ -46,7 +40,6 @@ struct FlightPlan: Equatable {
     /// Advances once per second; the HUD reads this so it is not redrawn on every frame.
     private(set) var slowNow: Date
     let startedAt: Date
-    private let cachedSegments: [PomodoroSchedule.Segment]
     var regionName: String?
     /// True during the takeoff sequence, when the scene owns the camera.
     var takeoffRunning = true
@@ -64,7 +57,6 @@ struct FlightPlan: Equatable {
         self.now = now
         self.slowNow = now
         self.startedAt = now
-        self.cachedSegments = plan.schedule.segments(total: plan.duration)
         retime()
     }
 
@@ -75,46 +67,19 @@ struct FlightPlan: Equatable {
     var progress: Double { clock.progress(at: now) }
     var isPaused: Bool { clock.isPaused }
     var isFinished: Bool { clock.isFinished(at: now) }
-    var landingTime: Date { clock.landingTime(at: slowNow) }
-    var hudRemaining: TimeInterval { clock.remaining(at: slowNow) }
-    var hudFraction: Double { FlightProfile.routeFraction(elapsed: clock.elapsed(at: slowNow), duration: plan.duration) }
-    /// Focus and break periods of this flight, worked out once.
-    var segments: [PomodoroSchedule.Segment] { cachedSegments }
-    var hudElapsed: TimeInterval { clock.elapsed(at: slowNow) }
-    /// "2 of 4" for the current focus block (or the one just finished, during a break).
-    var hudFocusPosition: (index: Int, count: Int) {
-        let focus = cachedSegments.filter { $0.kind == .focus }
-        let e = hudElapsed
-        let done = focus.filter { $0.start <= e }.count
-        return (max(1, done), focus.count)
-    }
-    var hudSegmentRemaining: TimeInterval {
-        let e = clock.elapsed(at: slowNow)
-        return max(0, (plan.schedule.segment(at: e, total: plan.duration)?.end ?? plan.duration) - e)
-    }
 
-    var routeFraction: Double { FlightProfile.routeFraction(elapsed: elapsed, duration: plan.duration) }
-
-    var position: Coordinate {
-        Geo.interpolate(plan.origin.coordinate, plan.destination.coordinate, fraction: routeFraction)
-    }
-
+    var routeFraction: Double { plan.track.routeFraction(at: elapsed) }
+    var position: Coordinate { plan.track.position(at: elapsed) }
     /// Direction of travel, used to keep the plane pointing up the screen.
-    var heading: Double {
-        let f = routeFraction
-        let a = Geo.interpolate(plan.origin.coordinate, plan.destination.coordinate, fraction: max(0, min(f, 0.999)))
-        let b = Geo.interpolate(plan.origin.coordinate, plan.destination.coordinate, fraction: max(0.001, min(f + 0.001, 1)))
-        return Geo.bearing(from: a, to: b)
-    }
-
-    var altitude: Double { FlightProfile.altitude(elapsed: elapsed, duration: plan.duration, cruise: plan.cruiseAltitude) }
+    var heading: Double { plan.track.heading(at: elapsed) }
+    var altitude: Double { plan.track.altitude(at: elapsed, cruise: plan.cruiseAltitude) }
     var climbProgress: Double { FlightProfile.climbProgress(altitude: altitude, cruise: plan.cruiseAltitude) }
 
-    var segment: PomodoroSchedule.Segment? { plan.schedule.segment(at: elapsed, total: plan.duration) }
-    var isOnBreak: Bool { plan.schedule.enabled && segment?.kind == .rest }
-    var segmentRemaining: TimeInterval { max(0, (segment?.end ?? plan.duration) - elapsed) }
-    var focusElapsed: TimeInterval { plan.schedule.focusElapsed(elapsed, total: plan.duration) }
-    var breaksTaken: Int { plan.schedule.segments(total: plan.duration).filter { $0.kind == .rest && $0.end <= elapsed }.count }
+    // Once-a-second values for the HUD and menu bar.
+    var hudElapsed: TimeInterval { clock.elapsed(at: slowNow) }
+    var hudRemaining: TimeInterval { clock.remaining(at: slowNow) }
+    var hudFraction: Double { plan.track.routeFraction(at: hudElapsed) }
+    var landingTime: Date { clock.landingTime(at: slowNow) }
 
     // MARK: Controls
 
@@ -132,7 +97,7 @@ struct FlightPlan: Equatable {
     private var desiredInterval: TimeInterval {
         guard sceneViewers > 0 else { return 1 }
         if takeoffRunning || isPaused { return 1.0 / 5 }
-        let c = FlightProfile.climbSeconds(duration: plan.duration)
+        let c = FlightProfile.climbSeconds(duration: plan.track.flightSeconds)
         let e = elapsed
         return (e < c + 5 || e > plan.duration - c - 5) ? 1.0 / 10 : 1.0 / 5
     }

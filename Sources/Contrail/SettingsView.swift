@@ -10,13 +10,6 @@ struct SettingsView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
                 Text("Settings").font(.system(size: 24, weight: .semibold))
-                group("Focus") {
-                    Toggle("Pomodoro breaks during flights", isOn: $model.settings.pomodoro.enabled)
-                    Stepper("Focus: \(Int(model.settings.pomodoro.focusMinutes)) min", value: $model.settings.pomodoro.focusMinutes, in: 10...90, step: 5)
-                        .disabled(!model.settings.pomodoro.enabled)
-                    Stepper("Break: \(Int(model.settings.pomodoro.breakMinutes)) min", value: $model.settings.pomodoro.breakMinutes, in: 3...30, step: 1)
-                        .disabled(!model.settings.pomodoro.enabled)
-                }
                 group("Flight") {
                     HStack {
                         Text("Flying height")

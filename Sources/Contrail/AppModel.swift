@@ -5,19 +5,17 @@ import Observation
 import SwiftUI
 
 enum PlanMode: String, CaseIterable, Identifiable {
-    case route = "By route", time = "By time"
+    case time = "By time", route = "By route"
     var id: String { rawValue }
 }
 
 enum PickTarget { case origin, destination }
 
 @Observable @MainActor final class FlightDraft {
-    var mode: PlanMode = .route
+    var mode: PlanMode = .time
     var origin: Place?
     var destination: Place?
     var minutes: Double = 60
-    /// Study time chosen for a route. nil means "use the route's flight time" (the prefill).
-    var studyMinutes: Double?
     var suggestions: [DestinationCandidate] = []
     var suggestionsLoading = false
     var suggestionsWidened = false
@@ -64,7 +62,6 @@ enum PickTarget { case origin, destination }
     private let wallpaper: WallpaperSync
     private var savedWindowFrame: NSRect?
     private var lastRegionLookup = Date.distantPast
-    private var lastSegmentKind: PomodoroSchedule.Kind?
     private var bannerTask: Task<Void, Never>?
     private var suggestionTask: Task<Void, Never>?
     let timeScale: Double
@@ -115,18 +112,6 @@ enum PickTarget { case origin, destination }
 
     var draftMinutes: Double? { draftDistanceKm.map { FlightTiming.minutes(forDistanceKm: $0) } }
 
-    /// Route flight time rounded to 5 minutes: the prefilled study time.
-    var routeStudyMinutes: Double? { draftMinutes.map { max(15, ($0 / 5).rounded() * 5) } }
-
-    /// Study time that will be used: the user's choice, else the prefill. In "By time" mode, the slider.
-    var effectiveStudyMinutes: Double? {
-        if draft.mode == .time { return draft.destination == nil ? nil : draft.minutes }
-        return draft.studyMinutes ?? routeStudyMinutes
-    }
-
-    /// Whole journey with breaks, in minutes.
-    var journeyMinutes: Double? { effectiveStudyMinutes.map { settings.pomodoro.duration(forFocus: $0 * 60) / 60 } }
-
     var routeProblem: String? {
         guard let d = draftDistanceKm else { return nil }
         if d < FlightTiming.minimumDistanceKm { return "Pick places at least 50 km apart." }
@@ -134,8 +119,8 @@ enum PickTarget { case origin, destination }
     }
 
     var routeWarning: String? {
-        guard let m = journeyMinutes, m > FlightTiming.longFlightWarningMinutes else { return nil }
-        return "This is a long session (\(TimeFormat.duration(minutes: m))). You can end it early at any time."
+        guard let m = draftMinutes, m > FlightTiming.longFlightWarningMinutes else { return nil }
+        return "This is a long flight (\(TimeFormat.duration(minutes: m))). You can end it early at any time."
     }
 
     var canContinue: Bool {
@@ -151,7 +136,6 @@ enum PickTarget { case origin, destination }
         case .destination:
             draft.destination = p
         }
-        draft.studyMinutes = nil // a new route prefills its own study time
     }
 
     func choose(_ r: PlaceResult, for target: PickTarget) async {
@@ -176,10 +160,11 @@ enum PickTarget { case origin, destination }
         suggestionTask?.cancel()
         draft.suggestionsLoading = true
         let minutes = draft.minutes, rotation = draft.suggestionRotation
+        let exclude = shuffle ? Set(draft.suggestions.map(\.place.code)) : []
         suggestionTask = Task {
             try? await Task.sleep(for: .milliseconds(250)) // debounce slider drags
             guard !Task.isCancelled else { return }
-            let result = await places.suggestions(origin: origin.coordinate, minutes: minutes, rotation: rotation)
+            let result = await places.suggestions(origin: origin.coordinate, minutes: minutes, rotation: rotation, exclude: exclude)
             guard !Task.isCancelled else { return }
             draft.suggestions = result.picks
             draft.suggestionsWidened = result.widened
@@ -199,9 +184,8 @@ enum PickTarget { case origin, destination }
 
     var boardingPlan: FlightPlan? {
         guard let o = draft.origin, let d = draft.destination, let c = draft.categoryID else { return nil }
-        var plan = FlightPlan(origin: o, destination: d, schedule: settings.pomodoro, seat: draft.seat, categoryID: c,
-                              goal: draft.goal.trimmingCharacters(in: .whitespacesAndNewlines),
-                              studyMinutes: effectiveStudyMinutes, timeScale: timeScale)
+        var plan = FlightPlan(origin: o, destination: d, seat: draft.seat, categoryID: c,
+                              goal: draft.goal.trimmingCharacters(in: .whitespacesAndNewlines), timeScale: timeScale)
         plan.cruiseAltitude = settings.cruiseAltitude.metres
         plan.mapLabels = settings.mapLabels
         return plan
@@ -215,7 +199,6 @@ enum PickTarget { case origin, destination }
         session.takeoffRunning = !reduceMotion
         session.onTick = { [weak self] s in self?.tick(s) }
         flight = session
-        lastSegmentKind = session.segment?.kind
         lastRegionLookup = .distantPast
         stage = .flying
         tab = .fly
@@ -232,13 +215,6 @@ enum PickTarget { case origin, destination }
 
     private func tick(_ s: FlightSession) {
         if s.isFinished { finish(.landed); return }
-        let kind = s.segment?.kind
-        if s.plan.schedule.enabled, kind != lastSegmentKind {
-            if kind == .rest { show("Seatbelt sign off. Stand up and stretch for \(Int(s.plan.schedule.breakMinutes * timeScale)) minutes.") }
-            else if lastSegmentKind == .rest { show("Seatbelt sign on. Back to your goal.") }
-            lastSegmentKind = kind
-        }
-        if sound.ducked != s.isOnBreak { sound.ducked = s.isOnBreak }
         if Date().timeIntervalSince(lastRegionLookup) > 120 {
             lastRegionLookup = Date()
             let pos = s.position
@@ -257,12 +233,11 @@ enum PickTarget { case origin, destination }
         let rec = FlightRecord(
             startedAt: s.startedAt, endedAt: Date(), origin: plan.origin, destination: plan.destination,
             distanceKm: plan.distanceKm, plannedSeconds: plan.duration * timeScale, flownSeconds: s.elapsed * timeScale,
-            focusSeconds: s.focusElapsed * timeScale, breakCount: s.breaksTaken, categoryID: plan.categoryID,
+            focusSeconds: s.elapsed * timeScale, breakCount: 0, categoryID: plan.categoryID,
             goal: plan.goal, seat: plan.seat, outcome: outcome)
         if outcome == .landed || s.elapsed >= 60 / timeScale { records.append(rec) }
         lastRecord = rec
         sound.setFlightActive(false, fade: 3)
-        sound.ducked = false
         if outcome == .landed {
             if settings.chimeOn { sound.playChime() }
             let cat = category(plan.categoryID)?.name ?? "focus"
@@ -280,7 +255,6 @@ enum PickTarget { case origin, destination }
     func planNext(continueJourney: Bool) {
         if continueJourney, let r = lastRecord { draft.origin = r.destination }
         draft.destination = nil
-        draft.studyMinutes = nil
         draft.goal = ""
         draft.suggestions = []
         stage = .planning

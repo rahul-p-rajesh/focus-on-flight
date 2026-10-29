@@ -35,7 +35,7 @@ struct ContrailApp: App {
             MenuBarContent(model: model)
         } label: {
             if let f = model.flight {
-                Image(systemName: f.isOnBreak ? "cup.and.saucer" : "airplane")
+                Image(systemName: "airplane")
                 Text(TimeFormat.clock(f.hudRemaining))
             } else {
                 Image(systemName: "airplane")
@@ -49,7 +49,6 @@ struct MenuBarContent: View {
     var body: some View {
         if let f = model.flight {
             Text("\(f.plan.origin.code) → \(f.plan.destination.code) · \(TimeFormat.clock(f.hudRemaining)) left")
-            if f.plan.schedule.enabled { Text(f.isOnBreak ? "On a break" : "Focusing") }
             Divider()
             Button(f.isPaused ? "Resume" : "Pause") { model.togglePause() }
             Button(model.desktopMode ? "Leave desktop mode" : "Desktop mode") { model.toggleDesktopMode() }
