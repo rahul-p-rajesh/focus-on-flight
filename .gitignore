@@ -1,0 +1,7 @@
+.build/
+build/
+data/raw/
+*.wav
+.DS_Store
+.swiftpm/
+prototypes/
