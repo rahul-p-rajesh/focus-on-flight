@@ -2,7 +2,7 @@
 
 A personal macOS focus app. Each session is a flight between two places on Earth at
 real speed: you look down on satellite scenery with town names and airports moving
-under a private jet, with ambient sound you choose and the travel time left always
+under a small white plane, with ambient sound you choose and the travel time left always
 in view. Pick how long you want to fly and choose from real airports that far away.
 
 ## Run it
@@ -33,7 +33,7 @@ and CSV export.
 | Route maths, timing, flight track, naming, logbook | `Sources/ContrailCore` (no UI, unit-tested) |
 | App model, flight session | `Sources/Contrail/AppModel.swift`, `FlightSession.swift` |
 | Moving scene, HUD, desktop panel | `Sources/Contrail/FlightViews.swift` |
-| Private jet drawing | `Sources/Contrail/AirlinerView.swift` |
+| Plane drawing | `Sources/Contrail/AirlinerView.swift` |
 | Planning, boarding, landing, logbook, settings | `Sources/Contrail/*View*.swift` |
 | Sound mixer | `Sources/Contrail/SoundMixer.swift`, `SoundViews.swift` |
 | Desktop mode, notifications, wallpaper sync | `Sources/Contrail/SystemServices.swift` |

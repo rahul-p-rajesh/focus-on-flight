@@ -6,7 +6,7 @@ Name: **Contrail**. Updated 2026-10-29. Owner: Rahul.
 
 Contrail is a personal macOS focus app. Each session is a flight from one place
 on Earth to another, at real speed. While you work, you look down on real
-satellite scenery moving under a small private jet, with town names and
+satellite scenery moving under a small white plane, with town names and
 airports below, ambient sound, and the travel time left always in view.
 
 ## 2. Principles
@@ -68,9 +68,10 @@ airports below, ambient sound, and the travel time left always in view.
 
 - **FR-5.1** Straight-down satellite view, heading-up, with town names, roads
   and airports (can be turned off).
-- **FR-5.2** A private jet at the centre: long nose, swept wings with winglets,
-  rear-mounted engines, T-tail, no coloured lights. Two contrails trail from the
-  engines once the plane is up.
+- **FR-5.2** A small white airliner silhouette at the centre with a soft
+  shadow and no coloured lights. Two contrails trail from the engines under the
+  wings once the plane is up, and a soft white line traces the whole route
+  through the plane.
 - **FR-5.3** Flying height setting: low (5.5 km, most detail), medium (10 km,
   default) or high (20 km). The camera never goes below 3.2 km, where imagery in
   remote areas turns soft.

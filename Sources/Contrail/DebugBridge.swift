@@ -139,6 +139,8 @@ import SwiftUI
         guard let shot = try? await MKMapSnapshotter(options: o).start() else { log("preview snapshot failed"); return }
         let view = ZStack {
             Image(nsImage: shot.image).resizable()
+            // Approximate the route line (the snapshotter cannot draw map overlays).
+            Rectangle().fill(.white.opacity(0.32)).frame(width: 1.6)
             SceneTint()
             PlaneScene(climb: 1, time: 3.3, groundSpeed: 20)
         }

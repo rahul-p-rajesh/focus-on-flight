@@ -17,6 +17,11 @@ struct FlightSceneView: View {
     var body: some View {
         ZStack {
             Map(position: $position, interactionModes: []) {
+                if !showGlobe {
+                    // Soft line along the whole route; the plane flies right along it.
+                    MapPolyline(coordinates: [session.plan.origin.coordinate.cl, session.plan.destination.coordinate.cl], contourStyle: .geodesic)
+                        .stroke(.white.opacity(0.32), style: StrokeStyle(lineWidth: 1.6, lineCap: .round))
+                }
                 if showGlobe {
                     MapPolyline(coordinates: session.plan.path.map(\.cl))
                         .stroke(Theme.accent.opacity(0.9), style: StrokeStyle(lineWidth: 2.5, lineCap: .round, dash: [7, 6]))
@@ -154,24 +159,24 @@ struct PlaneScene: View {
     var body: some View {
         GeometryReader { geo in
             let trail = Self.smooth((climb - 0.4) / 0.5)
-            let span = 72 * (1 + (1 - climb) * 0.5)
+            let span = 40 * (1 + (1 - climb) * 0.6)
             let c = CGPoint(x: geo.size.width / 2, y: geo.size.height / 2)
             Canvas { ctx, size in
                 guard trail > 0.01 else { return }
-                let unit = span / 72
-                let spacing = 3.2 * unit
+                let unit = span / 40
+                let spacing = 2.4 * unit
                 let travelled = time * groundSpeed
                 let base = floor(travelled / spacing)
                 let frac = travelled - base * spacing
                 let count = Int(min(size.height * 0.42, 320) / spacing)
-                for (side, ex) in [(-1.0, -PrivateJetView.exhaustX), (1.0, PrivateJetView.exhaustX)] {
+                for (side, ex) in [(-1.0, -PlaneSilhouetteView.exhaustX), (1.0, PlaneSilhouetteView.exhaustX)] {
                     for i in 0..<count {
                         let tt = Double(i) / Double(count)
                         let n = base - Double(i) // stable id per puff, so its wobble travels with it
-                        let y = c.y + span * PrivateJetView.exhaustY + Double(i) * spacing + frac
+                        let y = c.y + span * PlaneSilhouetteView.exhaustY + Double(i) * spacing + frac
                         // Nearly straight trails that slowly widen and drift apart, with a faint ripple.
-                        let wobble = (sin(n * 0.29 + side * 1.3) * tt * 0.7 + side * tt * 5) * unit
-                        let r = (1.4 + tt * 4.2) * unit
+                        let wobble = (sin(n * 0.29 + side * 1.3) * tt * 0.5 + side * tt * 2.5) * unit
+                        let r = (0.9 + tt * 2.4) * unit
                         let a = pow(1 - tt, 1.5) * 0.72 * trail
                         ctx.fill(Path(ellipseIn: CGRect(x: c.x + ex * span + wobble - r, y: y - r, width: r * 2, height: r * 2)),
                                  with: .color(.white.opacity(a)))
@@ -179,7 +184,7 @@ struct PlaneScene: View {
                 }
             }
             .blur(radius: 1.1)
-            PrivateJetView(span: span).position(c)
+            PlaneSilhouetteView(span: span).position(c)
         }
     }
 
