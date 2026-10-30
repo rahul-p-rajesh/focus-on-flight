@@ -87,6 +87,12 @@ public struct FlightTrack: Equatable, Sendable {
         return Self.routeHeading(origin, destination, fraction: routeFraction(at: t))
     }
 
+    /// 0 on the ground, 1 at cruise height (1 while holding).
+    public func climbFraction(at t: Double) -> Double {
+        if isHolding(at: t) { return 1 }
+        return FlightProfile.climbFraction(elapsed: routeTime(max(0, t)), duration: flightSeconds)
+    }
+
     public func altitude(at t: Double, cruise: Double = FlightProfile.cruiseAltitudeM) -> Double {
         if isHolding(at: t) { return cruise }
         return FlightProfile.altitude(elapsed: routeTime(t), duration: flightSeconds, cruise: cruise)

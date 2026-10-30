@@ -64,6 +64,7 @@ enum PickTarget { case origin, destination }
     private var lastRegionLookup = Date.distantPast
     private var bannerTask: Task<Void, Never>?
     private var suggestionTask: Task<Void, Never>?
+    private var crashTask: Task<Void, Never>?
     let timeScale: Double
 
     init() {
@@ -189,6 +190,7 @@ enum PickTarget { case origin, destination }
         var plan = FlightPlan(origin: o, destination: d, seat: draft.seat, categoryID: c,
                               goal: draft.goal.trimmingCharacters(in: .whitespacesAndNewlines), timeScale: timeScale)
         plan.cruiseAltitude = settings.cruiseAltitude.metres
+        plan.cruiseFeet = settings.cruiseAltitude.feet
         plan.mapLabels = settings.mapLabels
         return plan
     }
@@ -229,11 +231,29 @@ enum PickTarget { case origin, destination }
 
     func togglePause() { flight?.togglePause() }
 
-    func endEarly() { finish(.endedEarly) }
+    /// Ends the flight before landing. When the scene is on screen the plane goes down first;
+    /// a second request (or a click during the crash) ends it straight away. Either way the
+    /// Logbook opens afterwards, with the flight (if it lasted a minute or more) at the top.
+    func endEarly() {
+        guard let s = flight else { return }
+        let animate = settings.crashAnimation && !reduceMotion && !s.takeoffRunning && !showGlobe && s.sceneViewers > 0
+        guard animate, !s.isCrashing else { finish(.endedEarly, openLogbook: true); return }
+        s.beginCrash()
+        showSoundPanel = false
+        sound.setFlightActive(false, fade: 2.5)
+        crashTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(CrashTiming.total))
+            guard !Task.isCancelled, let self, self.flight === s else { return }
+            self.finish(.endedEarly, openLogbook: true)
+        }
+    }
 
-    private func finish(_ outcome: FlightOutcome) {
+    /// `openLogbook` shows the Logbook afterwards instead of the landing summary.
+    private func finish(_ outcome: FlightOutcome, openLogbook: Bool = false) {
         guard let s = flight else { return }
         s.stop()
+        crashTask?.cancel()
+        crashTask = nil
         let plan = s.plan
         let rec = FlightRecord(
             startedAt: s.startedAt, endedAt: Date(), origin: plan.origin, destination: plan.destination,
@@ -253,7 +273,12 @@ enum PickTarget { case origin, destination }
         if desktop.isShowing { exitDesktop() }
         if settings.wallpaperSync { Task { await wallpaper.restore() } }
         flight = nil
-        stage = .landed
+        if openLogbook {
+            stage = .planning
+            tab = .logbook
+        } else {
+            stage = .landed
+        }
         mainWindow?.makeKeyAndOrderFront(nil)
     }
 

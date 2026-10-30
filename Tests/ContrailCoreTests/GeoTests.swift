@@ -59,9 +59,10 @@ let newYork = Coordinate(latitude: 40.6413, longitude: -73.7781)
         }
     }
 
-    @Test func fifteenMinutesIsAboutHundredKm() {
-        let d = FlightTiming.distanceKm(forMinutes: 15)
-        #expect(d > 90 && d < 110)
+    @Test func shortHopTakesAboutHalfAnHour() {
+        // Rockford to Bloomington, Illinois: 191 km.
+        let m = FlightTiming.minutes(forDistanceKm: 191)
+        #expect(m > 28 && m < 33)
     }
 
     @Test func routeFractionIsMonotonicAndBounded() {
@@ -92,6 +93,28 @@ let newYork = Coordinate(latitude: 40.6413, longitude: -73.7781)
         #expect(FlightProfile.altitude(elapsed: d / 2, duration: d, cruise: 9_000) == 9_000)
         #expect(FlightProfile.climbProgress(altitude: FlightProfile.groundAltitudeM) == 0)
         #expect(FlightProfile.climbProgress(altitude: 9_000, cruise: 9_000) == 1)
+    }
+
+    @Test func climbProgressMatchesAltitude() {
+        let d = 3600.0
+        for e in stride(from: 0.0, through: d, by: 7) {
+            let k = FlightProfile.climbFraction(elapsed: e, duration: d)
+            let alt = FlightProfile.altitude(elapsed: e, duration: d)
+            #expect(alt >= FlightProfile.groundAltitudeM - 1e-6 && alt <= FlightProfile.cruiseAltitudeM + 1e-6)
+            #expect(abs(FlightProfile.climbProgress(altitude: alt) - k) < 1e-9)
+        }
+    }
+
+    @Test func speedFractionRampsToCruise() {
+        let d = 3600.0
+        #expect(FlightProfile.speedFraction(elapsed: 0, duration: d) == 0)
+        #expect(FlightProfile.speedFraction(elapsed: d / 2, duration: d) == 1)
+        #expect(FlightProfile.speedFraction(elapsed: d, duration: d) == 0)
+        // Matches the slope of routeFraction.
+        let e = 40.0, h = 0.01
+        let slope = (FlightProfile.routeFraction(elapsed: e + h, duration: d) - FlightProfile.routeFraction(elapsed: e - h, duration: d)) / (2 * h)
+        let cruiseSlope = 1 / (d - FlightProfile.accelerationSeconds(duration: d))
+        #expect(abs(slope / cruiseSlope - FlightProfile.speedFraction(elapsed: e, duration: d)) < 1e-4)
     }
 }
 

@@ -110,8 +110,11 @@ struct SoundMix: Codable, Equatable {
 enum CruiseAltitude: String, Codable, CaseIterable, Identifiable {
     case low, medium, high
     var id: String { rawValue }
-    var metres: Double { switch self { case .low: 5_000; case .medium: 9_000; case .high: 14_000 } }
-    var title: String { switch self { case .low: "Low · closest, fastest"; case .medium: "Medium"; case .high: "High · widest, calmest" } }
+    /// Camera height over the map.
+    var metres: Double { switch self { case .low: 12_000; case .medium: 20_000; case .high: 30_000 } }
+    /// Cruising altitude shown in the flight card.
+    var feet: Double { switch self { case .low: 30_000; case .medium: 36_000; case .high: 41_000 } }
+    var title: String { switch self { case .low: "Low · more detail"; case .medium: "Medium"; case .high: "High · widest, calmest" } }
 }
 
 struct AppSettings: Codable, Equatable {
@@ -126,6 +129,8 @@ struct AppSettings: Codable, Equatable {
     var wallpaperSync = false
     var units: DistanceUnit = .km
     var hudHideSeconds = 5.0
+    /// Show the plane going down when a flight is ended early.
+    var crashAnimation = true
     var mix = SoundMix()
 
     init() {}
@@ -143,6 +148,7 @@ struct AppSettings: Codable, Equatable {
         wallpaperSync = try c.decodeIfPresent(Bool.self, forKey: .wallpaperSync) ?? d.wallpaperSync
         units = (try? c.decodeIfPresent(DistanceUnit.self, forKey: .units)) ?? d.units
         hudHideSeconds = try c.decodeIfPresent(Double.self, forKey: .hudHideSeconds) ?? d.hudHideSeconds
+        crashAnimation = try c.decodeIfPresent(Bool.self, forKey: .crashAnimation) ?? d.crashAnimation
         mix = try c.decodeIfPresent(SoundMix.self, forKey: .mix) ?? d.mix
     }
 }
@@ -167,3 +173,17 @@ extension Color {
     }
 }
 
+
+/// Altitude and ground speed for the flight card.
+enum FlightFormat {
+    static func altitudeAndSpeed(feet: Double, kmh: Double, units: DistanceUnit) -> String {
+        let n = NumberFormatter()
+        n.numberStyle = .decimal
+        n.maximumFractionDigits = 0
+        func num(_ v: Double) -> String { n.string(from: NSNumber(value: v)) ?? "0" }
+        // Altitude in feet whatever the units, as on in-flight maps; speed follows the user's units.
+        let alt = "\(num((feet / 100).rounded() * 100)) ft"
+        let speed = units == .km ? "\(num((kmh / 5).rounded() * 5)) km/h" : "\(num((kmh * 0.621371 / 5).rounded() * 5)) mph"
+        return "\(alt) · \(speed)"
+    }
+}

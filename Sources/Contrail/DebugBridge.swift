@@ -80,6 +80,7 @@ import SwiftUI
         case "skipTakeoff": m.flight?.takeoffRunning = false
         case "pause": m.togglePause()
         case "end": retained = m.flight; m.endEarly()
+        case "endNow": retained = m.flight; m.endEarly(); m.endEarly()
         case "poke": retained?.sceneViewers += 1 // what used to restart an ended flight's timer
         case "desktop": m.toggleDesktopMode()
         case "globe": m.showGlobe.toggle()
@@ -113,6 +114,7 @@ import SwiftUI
             s += String(format: " elapsed=%.1f remaining=%.1f frac=%.4f alt=%.0f heading=%.1f paused=%@ break=%@ takeoff=%@ viewers=%d region=%@",
                         f.elapsed, f.remaining, f.routeFraction, f.altitude, f.heading, "\(f.isPaused)", "false", "\(f.takeoffRunning)", f.sceneViewers, f.regionName ?? "-")
             s += String(format: " interval=%.2f lat=%.4f lon=%.4f", f.tickInterval, f.position.latitude, f.position.longitude)
+            s += String(format: " crashing=%@ hudFeet=%.0f hudKmh=%.0f groundMps=%.1f", "\(f.isCrashing)", f.hudAltitudeFeet, f.hudSpeedKmh, f.groundSpeedMps)
         }
         s += " audio=[\(m.sound.debugState)]"
         s += " mix=\(m.settings.mix.active.sorted()) music=\(m.settings.mix.music ?? "-") master=\(m.settings.mix.masterOn)"
@@ -145,7 +147,7 @@ import SwiftUI
             // Approximate the route line (the snapshotter cannot draw map overlays).
             Rectangle().fill(.white.opacity(0.32)).frame(width: 1.6)
             SceneTint()
-            PlaneScene(climb: 1, time: 3.3, groundSpeed: 20)
+            if v.count >= 7, let crashT = Double(v[6]) { CrashFrame(t: crashT) } else { PlaneScene(climb: 1, travelled: 66) }
         }
         .frame(width: size.width, height: size.height)
         let r = ImageRenderer(content: view)

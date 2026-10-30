@@ -134,6 +134,6 @@ struct RootView: View {
         if stage == "boarding" { return }
         if LaunchFlags.has("--demo-desktop") { model.desktopMode = true }
         model.takeOff()
-        if stage == "landed" { model.endEarly() }
+        if stage == "landed" { model.endEarly(); model.stage = .landed; model.tab = .fly }
     }
 }

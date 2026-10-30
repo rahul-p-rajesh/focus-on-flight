@@ -8,9 +8,13 @@ in view. Pick how long you want to fly and choose from real airports that far aw
 ## Run it
 
 ```bash
-./scripts/build-app.sh
-open "build/Focus on Flight.app"
+./scripts/install.sh
+open "/Applications/Focus on Flight.app"
 ```
+
+`install.sh` builds the app, installs it to /Applications and deletes the build copy, so
+only one copy exists. Quit the app first. `build-app.sh` alone builds
+`build/Focus on Flight.app` for testing.
 
 Requires macOS 26 on Apple silicon. Builds with Xcode or with only the Command Line
 Tools (the scripts fall back to the Command Line Tools if the Xcode licence has not

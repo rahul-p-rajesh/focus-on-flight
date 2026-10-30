@@ -17,8 +17,9 @@ struct FlightSceneView: View {
     /// until "Re-center". The plane is then drawn on the map at its real position.
     @State private var exploring = false
     @State private var mapHeading = 0.0
+    @State private var shake: CGFloat = 0
 
-    private var canExplore: Bool { !isDesktop && !session.takeoffRunning }
+    private var canExplore: Bool { !isDesktop && !session.takeoffRunning && !session.isCrashing }
 
     var body: some View {
         ZStack {
@@ -53,10 +54,13 @@ struct FlightSceneView: View {
             .onMapCameraChange(frequency: .onEnd) { mapHeading = $0.camera.heading }
             .overlay { SceneTint(strength: showGlobe ? 0.5 : 1).allowsHitTesting(false) }
 
-            if !showGlobe && !exploring {
+            if let start = session.crashStart, !showGlobe {
+                CrashScene(start: start)
+            } else if !showGlobe && !exploring {
                 PlaneWithContrails(session: session, smooth: model.settings.smoothMotion).allowsHitTesting(false)
             }
         }
+        .modifier(ImpactShake(amount: shake))
         .overlay(alignment: .topTrailing) {
             if exploring && !isDesktop {
                 Button { recenter() } label: {
@@ -81,7 +85,8 @@ struct FlightSceneView: View {
         }
         .onDisappear { if counted { counted = false; session.sceneViewers -= 1 } }
         // The globe view frames the whole route once and holds still; only the close-up view follows the plane.
-        .onChange(of: session.now) { if !session.takeoffRunning && !exploring && !showGlobe { updateCamera(animated: true) } }
+        .onChange(of: session.now) { if !session.takeoffRunning && !exploring && !showGlobe && !session.isCrashing { updateCamera(animated: true) } }
+        .onChange(of: session.crashStart) { if session.crashStart != nil { runCrash() } }
         .onChange(of: position.positionedByUser) { if position.positionedByUser && canExplore { exploring = true } }
         .onChange(of: session.takeoffRunning) { if !session.takeoffRunning { updateCamera(animated: false) } }
         .onChange(of: showGlobe) { exploring = false; withAnimation(.easeInOut(duration: 1.6)) { position = .camera(camera()) } }
@@ -121,6 +126,20 @@ struct FlightSceneView: View {
         }
     }
 
+    /// The ground rushes up and twists as the plane spirals down; the view shakes on impact.
+    private func runCrash() {
+        exploring = false
+        let ahead = Geo.destination(from: session.position, bearing: session.heading, distanceKm: session.altitude / 1000 * 0.12)
+        withAnimation(.easeIn(duration: CrashTiming.fall)) {
+            position = .camera(MapCamera(centerCoordinate: ahead.cl, distance: max(900, session.altitude * 0.12),
+                                         heading: session.heading + 40, pitch: 0))
+        }
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(CrashTiming.fall))
+            withAnimation(.linear(duration: 0.8)) { shake = 1 }
+        }
+    }
+
     /// Counts this view towards the fast scene timer only while its window is actually visible.
     private func setVisible(_ seen: Bool) {
         let visible = seen || LaunchFlags.has("--force-visible") // test-only
@@ -154,9 +173,9 @@ struct SceneTint: View {
         GeometryReader { geo in
             let m = max(geo.size.width, geo.size.height)
             ZStack {
-                Color.black.opacity(0.16 * strength)
-                RadialGradient(colors: [.clear, .black.opacity(0.48 * strength)], center: .center,
-                               startRadius: m * 0.28, endRadius: m * 0.8)
+                Color.black.opacity(0.03 * strength)
+                RadialGradient(colors: [.clear, .black.opacity(0.32 * strength)], center: .center,
+                               startRadius: m * 0.36, endRadius: m * 0.85)
             }
             .mask {
                 ZStack(alignment: .bottomLeading) {
@@ -169,22 +188,35 @@ struct SceneTint: View {
     }
 }
 
-/// The airliner with two contrails of puffs drifting back at the speed the ground moves on screen.
-/// Redrawn up to 30 times a second so the puffs and lights move smoothly.
+/// The airliner with two contrails of puffs. The puffs stay put over the ground, like real contrails,
+/// so they slide back exactly as fast as the map does. Redrawn up to 30 times a second.
 struct PlaneWithContrails: View {
     let session: FlightSession
     var smooth = true
+    @State private var odometer = TrailOdometer()
 
     var body: some View {
         TimelineView(.animation(minimumInterval: smooth ? 1.0 / 30 : 1.0 / 5, paused: session.isPaused)) { tl in
             let t = tl.date.timeIntervalSinceReferenceDate
             GeometryReader { geo in
-                let k = session.climbProgress
-                // Ground speed on screen: about 236 m/s across a view roughly as tall as the camera is high.
-                let speed = session.isPaused ? 0 : 236 / max(session.altitude, 1) * geo.size.height * 0.9
-                PlaneScene(climb: k, time: t, groundSpeed: speed)
+                // Points per second the ground moves down the screen at the current camera height.
+                let metresTall = FlightProfile.viewHeightPerMetre * max(session.altitude, 1)
+                let speed = session.groundSpeedMps / metresTall * geo.size.height
+                PlaneScene(climb: session.climbProgress, travelled: odometer.advance(to: t, speed: speed))
             }
         }
+    }
+}
+
+/// Distance the ground has moved on screen, summed frame by frame so a change of speed never makes the trail jump.
+final class TrailOdometer {
+    private var last: TimeInterval?
+    private var travelled = 0.0
+
+    func advance(to t: TimeInterval, speed: Double) -> Double {
+        if let l = last { travelled += min(max(t - l, 0), 0.25) * speed }
+        last = t
+        return travelled
     }
 }
 
@@ -192,38 +224,40 @@ struct PlaneWithContrails: View {
 struct PlaneScene: View {
     /// 0 on the ground, 1 at cruise.
     let climb: Double
-    let time: TimeInterval
-    /// Points per second the ground moves down the screen.
-    let groundSpeed: Double
+    /// Points the ground has moved down the screen so far.
+    let travelled: Double
+
+    /// Wingspan at cruise. The plane looks bigger near the ground, as if the camera were closer.
+    static let cruiseSpan = 26.0
 
     var body: some View {
         GeometryReader { geo in
             let trail = Self.smooth((climb - 0.4) / 0.5)
-            let span = 40 * (1 + (1 - climb) * 0.6)
+            let span = Self.cruiseSpan * (1 + (1 - climb) * 0.6)
             let c = CGPoint(x: geo.size.width / 2, y: geo.size.height / 2)
             Canvas { ctx, size in
                 guard trail > 0.01 else { return }
-                let unit = span / 40
-                let spacing = 2.4 * unit
-                let travelled = time * groundSpeed
+                let unit = 1.0
+                let spacing = 2.0
                 let base = floor(travelled / spacing)
                 let frac = travelled - base * spacing
-                let count = Int(min(size.height * 0.42, 320) / spacing)
+                // Long, soft trails: about a third of the view.
+                let count = Int(min(size.height * 0.36, 340) / spacing)
                 for (side, ex) in [(-1.0, -PlaneSilhouetteView.exhaustX), (1.0, PlaneSilhouetteView.exhaustX)] {
                     for i in 0..<count {
                         let tt = Double(i) / Double(count)
                         let n = base - Double(i) // stable id per puff, so its wobble travels with it
                         let y = c.y + span * PlaneSilhouetteView.exhaustY + Double(i) * spacing + frac
                         // Nearly straight trails that slowly widen and drift apart, with a faint ripple.
-                        let wobble = (sin(n * 0.29 + side * 1.3) * tt * 0.5 + side * tt * 2.5) * unit
-                        let r = (0.9 + tt * 2.4) * unit
-                        let a = pow(1 - tt, 1.5) * 0.72 * trail
+                        let wobble = (sin(n * 0.29 + side * 1.3) * tt * 0.6 + side * tt * 2.2) * unit
+                        let r = (0.8 + tt * 3.2) * unit
+                        let a = pow(1 - tt, 1.3) * 0.62 * trail
                         ctx.fill(Path(ellipseIn: CGRect(x: c.x + ex * span + wobble - r, y: y - r, width: r * 2, height: r * 2)),
                                  with: .color(.white.opacity(a)))
                     }
                 }
             }
-            .blur(radius: 1.1)
+            .blur(radius: 1.3)
             PlaneSilhouetteView(span: span).position(c)
         }
     }
@@ -239,14 +273,15 @@ struct FlightView: View {
     @State private var confirmEnd = false
 
     private var hudVisible: Bool {
-        session.isPaused || model.showSoundPanel || confirmEnd
-            || session.slowNow.timeIntervalSince(lastMove) < model.settings.hudHideSeconds
+        !session.isCrashing && (session.isPaused || model.showSoundPanel || confirmEnd)
+            || (!session.isCrashing && session.slowNow.timeIntervalSince(lastMove) < model.settings.hudHideSeconds)
     }
 
     var body: some View {
         ZStack {
             FlightSceneView(session: session, model: model, showGlobe: model.showGlobe)
                 .simultaneousGesture(TapGesture().onEnded {
+                    if session.isCrashing { model.endEarly(); return }
                     if session.takeoffRunning { session.takeoffRunning = false }
                     lastMove = Date()
                 })
@@ -260,17 +295,17 @@ struct FlightView: View {
                 .transition(.opacity)
             }
 
-            if session.isPaused {
+            if session.isPaused && !session.isCrashing {
                 Label("Paused", systemImage: "pause.fill").font(.system(size: 20, weight: .semibold))
                     .padding(.horizontal, 20).padding(.vertical, 12).glassPanel(radius: 16)
                     .offset(y: -120)
             }
 
-            if !session.takeoffRunning && hudVisible {
+            if !session.takeoffRunning && !session.isCrashing && hudVisible {
                 hud.transition(.opacity)
             }
 
-            if !session.takeoffRunning {
+            if !session.takeoffRunning && !session.isCrashing {
                 // Always-visible travel time left, top right.
                 VStack {
                     HStack {
@@ -299,6 +334,7 @@ struct FlightView: View {
             }
         }
         .animation(.easeInOut(duration: 0.5), value: session.takeoffRunning)
+        .animation(.easeInOut(duration: 0.3), value: session.isCrashing)
         .animation(.easeInOut(duration: 0.6), value: hudVisible)
         .onChange(of: session.takeoffRunning) { lastMove = Date().addingTimeInterval(4) }
         .onChange(of: model.hudWake) { lastMove = Date().addingTimeInterval(20) }
@@ -375,6 +411,8 @@ struct FlightStatusCard: View {
                     if !compact, let r = session.regionName {
                         Text("Over \(r)").font(.system(size: 12)).foregroundStyle(Theme.dim)
                     }
+                    Text(FlightFormat.altitudeAndSpeed(feet: session.hudAltitudeFeet, kmh: session.hudSpeedKmh, units: model.settings.units))
+                        .font(.system(size: 12).monospacedDigit()).foregroundStyle(Theme.dim)
                     Text("Lands \(session.landingTime.formatted(date: .omitted, time: .shortened))").font(.system(size: 12)).foregroundStyle(Theme.dim)
                 }
             }

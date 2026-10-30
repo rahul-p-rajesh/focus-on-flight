@@ -28,6 +28,7 @@ struct SettingsView: View {
                         .labelsHidden().fixedSize()
                     }
                     Toggle("Landing chime", isOn: $model.settings.chimeOn)
+                    Toggle("Crash animation when a flight is ended early", isOn: $model.settings.crashAnimation)
                     Toggle("Keep the display awake during flights", isOn: $model.settings.keepAwake)
                     Toggle("Start flights in desktop mode", isOn: Binding(get: { model.settings.desktopModeByDefault }, set: {
                         model.settings.desktopModeByDefault = $0

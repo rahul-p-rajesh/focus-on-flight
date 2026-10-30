@@ -7,14 +7,19 @@ struct FlightPlan: Equatable {
     var origin: Place
     var destination: Place
     var distanceKm: Double
-    /// Real flight time: taxi, climb, cruise at 850 km/h, descent.
+    /// Flight time: taxi, climb, cruise at `FlightTiming.cruiseKmh`, descent.
     var duration: TimeInterval
     /// The path flown at real cruise speed.
     var track: FlightTrack
     var seat: String
+    /// Test-only speed-up; 1 in normal use.
+    var timeScale: Double
     var categoryID: UUID
     var goal: String
+    /// Camera height at cruise, in metres.
     var cruiseAltitude: Double = FlightProfile.cruiseAltitudeM
+    /// Cruising altitude shown to the user, in feet.
+    var cruiseFeet: Double = 36_000
     var mapLabels = true
 
     init(origin: Place, destination: Place, seat: String, categoryID: UUID, goal: String, timeScale: Double = 1) {
@@ -24,6 +29,7 @@ struct FlightPlan: Equatable {
         let seconds = FlightTiming.minutes(forDistanceKm: distanceKm) * 60 / timeScale
         self.track = FlightTrack(origin: origin.coordinate, destination: destination.coordinate, flightSeconds: seconds, holdSeconds: 0)
         self.duration = track.duration
+        self.timeScale = timeScale
         self.seat = seat
         self.categoryID = categoryID
         self.goal = goal
@@ -43,6 +49,9 @@ struct FlightPlan: Equatable {
     var regionName: String?
     /// True during the takeoff sequence, when the scene owns the camera.
     var takeoffRunning = true
+    /// Set when the flight is ended early and the plane is going down. The clock is frozen from then on.
+    private(set) var crashStart: Date?
+    var isCrashing: Bool { crashStart != nil }
     /// Number of on-screen, unobscured views drawing the moving scene. With none, the timer slows to save energy.
     var sceneViewers = 0 { didSet { retime() } }
     var onTick: ((FlightSession) -> Void)?
@@ -77,6 +86,15 @@ struct FlightPlan: Equatable {
     var heading: Double { plan.track.heading(at: elapsed) }
     var altitude: Double { plan.track.altitude(at: elapsed, cruise: plan.cruiseAltitude) }
     var climbProgress: Double { FlightProfile.climbProgress(altitude: altitude, cruise: plan.cruiseAltitude) }
+    /// Metres per second the ground moves under the plane, in wall-clock time.
+    var groundSpeedMps: Double { isPaused ? 0 : trackSpeedMps(at: elapsed) }
+
+    /// Ground speed along the route at `t`, in metres per wall-clock second.
+    private func trackSpeedMps(at t: TimeInterval) -> Double {
+        let h = 0.5, a = max(0, t - h), b = t + h
+        let d = plan.track.routeFraction(at: b) - plan.track.routeFraction(at: a)
+        return max(0, d) * plan.distanceKm * 1000 / (b - a)
+    }
 
     // Once-a-second values for the HUD and menu bar.
     var hudElapsed: TimeInterval { clock.elapsed(at: slowNow) }
@@ -86,12 +104,26 @@ struct FlightPlan: Equatable {
     var hudPosition: Coordinate { plan.track.position(at: hudElapsed) }
     var hudHeading: Double { plan.track.heading(at: hudElapsed) }
     var landingTime: Date { clock.landingTime(at: slowNow) }
+    /// Altitude and ground speed for the flight card, updated once a second.
+    var hudAltitudeFeet: Double { plan.cruiseFeet * plan.track.climbFraction(at: hudElapsed) }
+    /// The plane's true ground speed, so the number matches how fast the map moves.
+    var hudSpeedKmh: Double { trackSpeedMps(at: hudElapsed) * 3.6 / plan.timeScale }
 
     // MARK: Controls
 
     func pause() { clock.pause(at: Date()); now = Date(); slowNow = now }
     func resume() { clock.resume(at: Date()); now = Date(); slowNow = now }
-    func togglePause() { isPaused ? resume() : pause() }
+    func togglePause() { guard !isCrashing else { return }; isPaused ? resume() : pause() }
+
+    /// Freezes the flight where it is and starts the crash sequence.
+    func beginCrash() {
+        guard crashStart == nil else { return }
+        let t = Date()
+        clock.pause(at: t)
+        now = t
+        slowNow = t
+        crashStart = t
+    }
 
     func stop() {
         isStopped = true

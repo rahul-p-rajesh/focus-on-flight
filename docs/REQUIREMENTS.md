@@ -33,9 +33,11 @@ airports below, ambient sound, and the travel time left always in view.
 ### FR-1 Session length is travel time
 
 - **FR-1.1** A session lasts exactly the real flight time of the route:
-  great-circle distance at 850 km/h plus 8 minutes for taxi, climb and descent.
-- **FR-1.2** The plane always flies at real speed. There is no study-time
-  setting, no Pomodoro timer and no breaks.
+  great-circle distance at 500 km/h plus 8 minutes for taxi, climb and descent.
+  A 191 km hop takes about 31 minutes.
+- **FR-1.2** The plane always flies at that one steady speed; it is never sped
+  up to fit a session. There is no study-time setting, no Pomodoro timer and no
+  breaks.
 
 ### FR-2 Plan by time (first tab)
 
@@ -70,13 +72,16 @@ airports below, ambient sound, and the travel time left always in view.
 - **FR-5.1** Straight-down satellite view, heading-up, with town names, roads
   and airports (can be turned off).
 - **FR-5.2** A small white airliner silhouette at the centre with a soft
-  shadow and no coloured lights. Two contrails trail from the engines under the
-  wings once the plane is up, and a soft white line traces the whole route
-  through the plane.
-- **FR-5.3** Flying height setting: low (5 km, closest and fastest-looking),
-  medium (9 km, default) or high (14 km, widest and calmest). Takeoff and
-  landing start and end at 2 km. The plane reaches cruise speed within about
-  90 seconds, so it never crawls near the airport.
+  shadow and no coloured lights. Two long, soft contrails trail from the engines
+  once the plane is up and stay put over the ground, so they slide back exactly
+  as fast as the map. A soft white line traces the whole route through the
+  plane. The imagery is shown at near full brightness, with only a light
+  vignette.
+- **FR-5.3** Flying height setting (camera height): low (12 km, more detail),
+  medium (20 km, default, about 11 km of ground top to bottom) or high (30 km,
+  widest and calmest). Takeoff and landing start and end at 1.5 km, and the
+  climb widens the view at an even pace. The plane reaches cruise speed within
+  about 90 seconds, so it never crawls near the airport.
 - **FR-5.3a** During a flight the map can be dragged, zoomed and rotated. The
   plane keeps flying and is drawn at its real position; "Re-center" (or R)
   follows it again.
@@ -85,8 +90,16 @@ airports below, ambient sound, and the travel time left always in view.
 - **FR-5.5** Travel time left is always visible at the top right of the flight
   view and in the macOS menu bar.
 - **FR-5.6** An auto-hiding glass card shows route progress, travel time left,
-  the region below and the landing time. Controls: pause, globe view, sound,
+  the region below, altitude and ground speed (altitude in feet; 30,000, 36,000
+  or 41,000 ft at cruise depending on flying height; speed in km/h or mph), and
+  the landing time. Controls: pause, globe view, sound,
   landing chime, desktop mode, end flight early.
+- **FR-5.8** Ending a flight early (after confirming) plays a crash of about
+  six seconds: the plane spirals down trailing smoke while the ground rushes
+  up, then a flash, fireball, shock ring and smoke, and the scene dims. A click
+  skips it. It is skipped when Reduce Motion is on, during takeoff, in the
+  globe view, when the scene is not on screen, or when turned off in Settings.
+  Afterwards the Logbook opens.
 - **FR-5.7** Sleep, pause and hidden windows are handled: the plane is where it
   should be for the elapsed time, and the scene updates once a second when not
   visible.
