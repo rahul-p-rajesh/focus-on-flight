@@ -7,6 +7,8 @@ struct ContrailApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
     @State private var model = AppModel()
 
+    init() { MenuBarPlacement.startNearRight() }
+
     var body: some Scene {
         Window("Focus on Flight", id: "main") {
             RootView(model: model)
@@ -41,6 +43,19 @@ struct ContrailApp: App {
                 Image(systemName: "airplane")
             }
         }
+    }
+}
+
+/// macOS hides menu bar items that don't fit beside the camera notch, and a new item starts at the
+/// far left, so on a full menu bar the travel time ends up hidden. Start it near the right, next to
+/// Control Centre. Once the user Cmd-drags it elsewhere, macOS stores that position and this leaves it alone.
+enum MenuBarPlacement {
+    /// The menu bar item's autosave name; SwiftUI names the first MenuBarExtra "Item-0".
+    static let key = "NSStatusItem Preferred Position Item-0"
+
+    static func startNearRight() {
+        guard UserDefaults.standard.object(forKey: key) == nil else { return }
+        UserDefaults.standard.set(260.0, forKey: key) // points from the right edge of the screen
     }
 }
 
