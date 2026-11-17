@@ -37,10 +37,10 @@ struct ContrailApp: App {
             MenuBarContent(model: model)
         } label: {
             if let f = model.flight {
-                Image(systemName: "airplane")
+                Image(nsImage: MenuBarIcon.image)
                 Text(TimeFormat.clock(f.hudRemaining))
             } else {
-                Image(systemName: "airplane")
+                Image(nsImage: MenuBarIcon.image)
             }
         }
     }
