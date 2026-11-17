@@ -88,8 +88,8 @@ airports below, ambient sound, and the travel time left always in view.
 - **FR-5.4** Motion setting: Smooth (the camera glides every frame) or Energy
   saver (small steps a few times a second).
 - **FR-5.5** Travel time left is always visible at the top right of the flight
-  view and in the macOS menu bar. The menu bar item uses the app's own plane with
-  contrails, not the system airplane symbol, which reads as Airplane Mode.
+  view and in the macOS menu bar. The menu bar item is a pilot's wings badge around the
+  app's own plane, not the system airplane symbol, which reads as Airplane Mode.
 - **FR-5.6** An auto-hiding glass card shows route progress, travel time left,
   the region below, altitude and ground speed (altitude in feet; 30,000, 36,000
   or 41,000 ft at cruise depending on flying height; speed in km/h or mph), and
